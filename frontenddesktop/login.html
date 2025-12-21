@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inov8r - Login</title>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white; /* have to put image here later */
+            font-family: "Times New Roman", serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Login box */
+        .login-box {
+            background-color: white;
+            width: 380px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+            .login-box h1 {
+                margin: 0 0 20px 0;
+                font-size: 42px;
+                color: blueviolet;
+            }
+
+        /* Input fields */
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+            .input-group label {
+                font-size: 16px;
+                margin-bottom: 5px;
+                display: block;
+            }
+
+            .input-group input {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+                border-radius: 6px;
+                border: 1px solid #ccc;
+                box-sizing: border-box;
+            }
+
+        /* Password with toggle */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 11px;
+            cursor: pointer;
+            font-size: 15px;
+            background: none;
+            border: none;
+            padding: 3px;
+        }
+
+        /* Buttons */
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .btn {
+            width: 48%;
+            padding: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 6px;
+            border: none;
+            transition: 0.2s;
+        }
+
+        .btn-login {
+            background-color: blue;
+            color: white;
+        }
+
+            .btn-login:hover {
+                background-color: #002db3;
+            }
+
+        .btn-signup {
+            background-color: #f0f0f0;
+        }
+
+            .btn-signup:hover {
+                background-color: #dcdcdc;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <h1>Inov8r</h1>
+
+        <div class="input-group">
+            <label>Username / Email</label>
+            <input type="text" id="username" placeholder="Enter your username or email" />
+        </div>
+
+        <div class="input-group">
+            <label>Password</label>
+            <div class="password-wrapper">
+                <input type="password" id="password" placeholder="Enter your password" />
+                <button class="toggle-password" onclick="togglePassword()">👁</button>
+            </div>
+        </div>
+
+        <div class="button-row">
+            <button class="btn btn-signup" onclick="signup()">User Sign Up</button>
+            <button class="btn btn-login" onclick="login()">Log In</button>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const pw = document.getElementById("password");
+            pw.type = pw.type === "password" ? "text" : "password";
+        }
+
+        function login() {
+            const user = document.getElementById("username").value;
+            const pw = document.getElementById("password").value;
+
+            window.location.href = "mainmenu.html";
+     
+        }
+
+        function signup() {
+            window.location.href = "signup.html";
+        }
+    </script>
+
+</body>
+</html>
