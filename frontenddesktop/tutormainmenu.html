@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inov8r - Tutors</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: "Times New Roman", serif;
+            background-color: white;
+        }
+
+        header {
+            text-align: center;
+            padding: 25px 10px;
+            background-color: white;
+            border-bottom: 2px solid #ddd;
+        }
+
+            header h1 {
+                margin: 0;
+                font-size: 50px;
+                color: blueviolet;
+            }
+
+        /*Search Bar*/
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+            .search-container input {
+                width: 50%;
+                padding: 12px;
+                font-size: 18px;
+                border-radius: 8px;
+                border: 1px solid #bbb;
+            }
+
+        /* Subject cards grid */
+        .subjects {
+            width: 80%;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+        }
+
+        .subject-card {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+            .subject-card:hover {
+                transform: scale(1.05);
+            }
+
+            .subject-card h2 {
+                margin: 0;
+                font-size: 26px;
+                color: #333;
+            }
+
+            .subject-card p {
+                color: #666;
+                margin-top: 10px;
+            }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Inov8r</h1>
+    </header>
+
+    <!-- Search -->
+    <div class="search-container">
+        <input type="text"
+               id="searchInput"
+               placeholder="Search subjects (Math, Science, History...)"
+               onkeyup="filterSubjects()" />
+    </div>
+
+    <!-- Subjects -->
+    <div class="subjects" id="subjectsContainer">
+
+        <div class="subject-card" onclick="openSubject('math')">
+            <h2>Mathematics</h2>
+            <p>Algebra, Calculus, Geometry</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('science')">
+            <h2>Science</h2>
+            <p>Biology, Chemistry, Physics</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('history')">
+            <h2>History</h2>
+            <p>World & U.S. History</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('english')">
+            <h2>English</h2>
+            <p>Writing, Literature, Grammar</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('computer-science')">
+            <h2>Computer Science</h2>
+            <p>Programming, Algorithms</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('electrical')">
+            <h2>Electrical</h2>
+            <p>Circuits, Power, Electronics</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('spanish')">
+            <h2>Spanish</h2>
+            <p>Writing, Literature, Grammar</p>
+        </div>
+
+        <div class="subject-card" onclick="openSubject('architecture')">
+            <h2>Architecture</h2>
+            <p>Design, History</p>
+        </div>
+
+    </div>
+
+    <script>
+        function openSubject(subject) {
+            // Redirect to subject-specific tutor page
+            window.location.href = subject + "tutors.html";
+        }
+
+        function filterSubjects() {
+            const input = document.getElementById("searchInput").value.toLowerCase();
+            const cards = document.getElementsByClassName("subject-card");
+
+            for (let card of cards) {
+                const text = card.innerText.toLowerCase();
+                card.style.display = text.includes(input) ? "block" : "none";
+            }
+        }
+    </script>
+
+</body>
+</html>
