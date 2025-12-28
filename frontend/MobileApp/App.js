@@ -3,11 +3,13 @@ import { View, Text, Button, TextInput, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './LoginScreen';
+import SignUpScreen from './SignUpScreen';
+//import DetailsScreen from './DetailsScreen';
 
 const Stack = createNativeStackNavigator();
 
 // Home Screen
-function HomeScreen({ navigation }) {
+/*function HomeScreen({ navigation }) {
   const [name, setName] = useState('');
 
   return (
@@ -25,7 +27,7 @@ function HomeScreen({ navigation }) {
       />
     </View>
   );
-}
+}*/
 
 // Details Screen
 function DetailsScreen({ route }) {
@@ -52,12 +54,16 @@ export default function App() {
     component={LoginScreen} 
     options={{ headerShown: false }} // optional: hide top bar
   />
-  <Stack.Screen 
-    name="Details" 
+  <Stack.Screen       //Sign Up Screen navigator
+    name="SignUp"
+    component={SignUpScreen}
+    options={{ title: 'Create Account'}}
+  />
+  <Stack.Screen      //Details Screen navigator
+    name="Details"    
     component={DetailsScreen} 
   />
 </Stack.Navigator>
-
     </NavigationContainer>
   );
 }
