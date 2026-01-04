@@ -37,7 +37,13 @@ export default function LoginScreen({ navigation }) {
 
       <Button title="Login" onPress={handleLogin} />
 
-      <Text style={styles.footerText}>Don't have an account? Sign up</Text>
+      <Text
+  style={styles.footerText}
+  onPress={() => navigation.navigate('SignUp')}
+>
+  Don't have an account? Sign up
+</Text>
+
     </View>
   );
 }

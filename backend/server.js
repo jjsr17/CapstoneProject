@@ -19,26 +19,33 @@ const locationRoutes = require("./routes/locationRoutes");
 
 const app = express();
 
-// Parse JSON first
+// Parse JSON
 app.use(express.json());
 
-// CORS (Vite -> Express)
+// ✅ CORS: allow your actual frontend origins
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:8081", "http://localhost:5173"],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false, // set true only if you use cookies
 };
 
 app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
-// ✅ IMPORTANT: handle preflight for ALL /api routes (Express 5 safe)
-app.options(/\/api\/.*/, cors(corsOptions));
 
 // DB
 connectDB();
 
-// Health check
+// Health
 app.get("/", (req, res) => res.status(200).send("API running..."));
+app.get("/health", (req, res) => res.json({ ok: true }));
+
+// ✅ TODO: add the route you're calling (temporary stub)
+app.post("/auth/ms-login", (req, res) => {
+  // You'll verify token here later
+  res.json({ ok: true, user: { from: "ms-login stub" } });
+});
 
 // API routes
 app.use("/api/users", userRoutes);
