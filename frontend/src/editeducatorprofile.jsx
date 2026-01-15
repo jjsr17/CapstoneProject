@@ -6,12 +6,12 @@ export default function EditEducatorProfile() {
     const profileUploadRef = useRef(null);
 
     const goBack = () => {
-        window.location.href = "educatoraccount.jsx";
+        window.location.href = "educatoraccount";
     };
 
     const saveChanges = () => {
         alert("Educator profile updated.");
-        window.location.href = "educatoraccount.jsx";
+        window.location.href = "educatoraccount";
     };
 
     useEffect(() => {

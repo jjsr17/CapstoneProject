@@ -11,11 +11,11 @@ export default function EducatorAccount() {
     };
 
     const goHome = () => {
-        window.location.href = "mainmenu.jsx";
+        window.location.href = "mainmenu";
     };
 
     const editProfile = () => {
-        window.location.href = "editeducatorprofile.jsx";
+        window.location.href = "editeducatorprofile";
     };
 
     const settings = () => {

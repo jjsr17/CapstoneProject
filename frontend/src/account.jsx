@@ -11,21 +11,21 @@ export default function StudentAccount() {
     };
 
     const goHome = () => {
-        window.location.href = "mainmenu.jsx";
+        window.location.href = "mainmenu";
     };
 
     const editProfile = () => {
-        window.location.href = "editprofile.jsx";
+        window.location.href = "editprofile";
     };
 
     const settings = () => {
         localStorage.setItem("userRole", "student");
-        window.location.href = "settings.jsx";
+        window.location.href = "settings";
     };
 
     const logout = () => {
         localStorage.removeItem("userRole");
-        window.location.href = "login.jsx";
+        window.location.href = "login";
     };
 
     useEffect(() => {

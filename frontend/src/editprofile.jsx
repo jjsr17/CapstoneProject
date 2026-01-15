@@ -6,12 +6,12 @@ export default function EditProfile() {
     const profileUploadRef = useRef(null);
 
     const goBack = () => {
-        window.location.href = "account.jsx";
+        window.location.href = "account";
     };
 
     const saveChanges = () => {
         alert("Profile changes saved.");
-        window.location.href = "account.jsx";
+        window.location.href = "account";
     };
 
     useEffect(() => {
