@@ -50,7 +50,7 @@
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
@@ -60,7 +60,7 @@
               "RelativeDocumentMoniker": "frontend\\src\\educatoraccount.jsx",
               "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.jsx",
               "RelativeToolTip": "frontend\\src\\educatoraccount.jsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAzAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
               "WhenOpened": "2026-01-15T01:40:24.141Z",
               "EditorCaption": ""
@@ -75,8 +75,7 @@
               "RelativeToolTip": "frontend\\src\\editprofile.jsx",
               "ViewState": "AgIAACwAAAAAAAAAAAAAwA0AAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-15T01:40:13.315Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-15T01:40:13.315Z"
             },
             {
               "$type": "Document",
@@ -88,8 +87,7 @@
               "RelativeToolTip": "frontend\\src\\editeducatorprofile.jsx",
               "ViewState": "AgIAAAUAAAAAAAAAAAAAwA0AAAAvAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-15T01:39:51.114Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-15T01:39:51.114Z"
             },
             {
               "$type": "Document",
@@ -101,8 +99,7 @@
               "RelativeToolTip": "backend\\models\\TutorProfile.js",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
-              "WhenOpened": "2026-01-15T01:32:09.778Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-15T01:32:09.778Z"
             },
             {
               "$type": "Document",
@@ -114,8 +111,7 @@
               "RelativeToolTip": "frontend\\src\\account.jsx",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-15T01:14:55.419Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-15T01:14:55.419Z"
             },
             {
               "$type": "Document",
@@ -127,8 +123,7 @@
               "RelativeToolTip": "frontend\\src\\App.jsx",
               "ViewState": "AgIAAAsAAAAAAAAAAAAAwBkAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-15T01:14:01.133Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-15T01:14:01.133Z"
             },
             {
               "$type": "Document",
@@ -140,8 +135,7 @@
               "RelativeToolTip": "backend\\.env",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-01-11T02:18:12.949Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-11T02:18:12.949Z"
             },
             {
               "$type": "Document",
@@ -153,8 +147,7 @@
               "RelativeToolTip": "backend\\server.js",
               "ViewState": "AgIAABUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
-              "WhenOpened": "2026-01-11T01:27:17.419Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-11T01:27:17.419Z"
             },
             {
               "$type": "Document",
