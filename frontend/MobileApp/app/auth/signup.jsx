@@ -334,9 +334,15 @@ export default function SignupScreen() {
         </Pressable>
       )}
 
-      <Pressable style={styles.secondaryBtn} onPress={() => router.back()} disabled={loading} accessibilityRole="button">
-        <Text style={styles.secondaryBtnText}>BACK</Text>
-      </Pressable>
+      <Pressable
+        style={styles.secondaryBtn}
+        onPress={() => router.replace("/auth/login")}
+        disabled={loading}
+        accessibilityRole="button"
+>
+  <Text style={styles.secondaryBtnText}>BACK</Text>
+</Pressable>
+
 
       <Text style={styles.debug}>POST {API_URL}{SIGNUP_PATH}</Text>
       <View style={{ height: 40 }} />

@@ -52,7 +52,7 @@ export default function LoginScreen() {
     const data = await resp.json();
     console.log("Logged in user:", data.user);
 
-    router.push("/details");
+    router.push("/home");
   }, [discovery]);
 
   const handleLogin = () => {
@@ -60,7 +60,7 @@ export default function LoginScreen() {
       Alert.alert("Error", "Please enter username and password");
       return;
     }
-    router.push("/details");
+    router.replace("/home");
   };
 
   return (
