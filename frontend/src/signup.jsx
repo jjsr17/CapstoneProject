@@ -97,7 +97,7 @@ export default function SignUpMenu() {
     phone,
     email,
     accountType,
-
+    password,
     // student
     schoolName,
     educationLevel,

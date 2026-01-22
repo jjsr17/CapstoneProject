@@ -160,5 +160,41 @@ router.post("/signup", async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+// POST /api/users/login -> validate credentials
+router.post("/login", async (req, res) => {
+  try {
+    const usernameRaw = (req.body?.username ?? req.body?.email ?? req.body?.user_email ?? "")
+      .toString()
+      .trim()
+      .toLowerCase();
+
+    const password = req.body?.password;
+
+    if (!usernameRaw || typeof password !== "string" || !password) {
+      return res.status(400).json({ message: "username/email and password are required" });
+    }
+
+    // Your schema uses user_email (not email)
+    const user = await User.findOne({ user_email: usernameRaw }).lean();
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, user.passwordHash || "");
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    return res.json({
+      ok: true,
+      user: {
+        _id: user._id,
+        accountType: user.accountType,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        user_email: user.user_email,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 
 module.exports = router;

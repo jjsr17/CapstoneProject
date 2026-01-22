@@ -3,6 +3,9 @@ import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "./authConfig";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+//const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function LoginMenu() {
   const navigate = useNavigate();
   const { instance } = useMsal();
@@ -10,32 +13,76 @@ export default function LoginMenu() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const togglePassword = () => setShowPw((v) => !v);
 
-  const loginWithMicrosoft = async () => {
+  async function fetchMsLogin(idToken) {
+    const resp = await fetch(`${API_BASE}/auth/ms-login`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+
+    const raw = await resp.text();
+    let data = null;
     try {
       const result = await instance.loginPopup(loginRequest);
       console.log("Signed in:", result.account);
       navigate("/mainmenu"); // ✅ router navigation
     } catch (e) {
       console.error(e);
-      alert("Microsoft sign-in failed.");
+      alert(e?.message || "Microsoft sign-in failed.");
+    } finally {
+      setBusy(false);
     }
   };
 
-  const login = (e) => {
-    e.preventDefault();
+  const login = async (e) => {
+  e.preventDefault();
 
-    // TODO: call your backend auth here if you still want local username/pw auth
-    // console.log({ username, password });
+  if (!username.trim()) return alert("Enter your username or email.");
+  if (!password) return alert("Enter your password.");
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/users/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: username.trim(), password }),
+    });
+
+    const raw = await resp.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch {}
+
+    if (!resp.ok) {
+      alert(data?.message || raw || "Login failed");
+      return;
+    }
+
+    const user = data?.user;
+    if (!user?._id) {
+      alert("Login succeeded but user id missing.");
+      return;
+    }
+
+    localStorage.setItem("mongoUserId", user._id);
+    if (user.accountType) localStorage.setItem("accountType", user.accountType);
+    localStorage.setItem("tutorId", user._id);
+
+    if (user.accountType === "educator") navigate("/educatoraccount");
+    else navigate("/account");
+  } catch (err) {
+    console.error(err);
+    alert("Server error");
+  }
+};
 
     navigate("/mainmenu"); // ✅ router navigation
   };
 
   const signup = (e) => {
     e.preventDefault();
-    navigate("/signup"); // ✅ router navigation
+    navigate("/signup");
   };
 
   return (
@@ -133,6 +180,7 @@ export default function LoginMenu() {
           background: #2F2F2F;
           color: white;
           font-size: 16px;
+          opacity: ${busy ? 0.7 : 1};
         }
       `}</style>
 
@@ -185,8 +233,13 @@ export default function LoginMenu() {
           </div>
         </form>
 
-        <button type="button" className="sso-btn" onClick={loginWithMicrosoft}>
-          Sign in with Microsoft
+        <button
+          type="button"
+          className="sso-btn"
+          onClick={loginWithMicrosoft}
+          disabled={busy}
+        >
+          {busy ? "Signing in..." : "Sign in with Microsoft"}
         </button>
       </div>
     </>
