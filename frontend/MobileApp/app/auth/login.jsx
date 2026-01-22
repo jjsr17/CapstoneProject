@@ -87,42 +87,10 @@ const result = await req.promptAsync(discovery, { useProxy: true });
         },
       });
 
-      const raw = await resp.text();
-      console.log("MS LOGIN status:", resp.status);
-      console.log("MS LOGIN raw:", raw);
+    const data = await resp.json();
+    console.log("Logged in user:", data.user);
 
-      let data = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch {
-        data = null;
-      }
-
-      if (!resp.ok) {
-        Alert.alert("MS Login failed", data?.message || raw || `HTTP ${resp.status}`);
-        return;
-      }
-
-      console.log("MS LOGIN PARSED JSON:", data);
-
-      const user = data?.user;
-      if (!user?._id) {
-        Alert.alert("Login error", "Backend did not return user._id");
-        return;
-      }
-
-      await saveAuth(user);
-
-      // Route by account type
-      if (user.accountType === "educator") {
-        router.replace("/educatoraccount");
-      } else {
-        router.replace("/account");
-      }
-    } catch (e) {
-      console.error("MS login error:", e);
-      Alert.alert("MS Login error", String(e?.message ?? e));
-    }
+    router.push("/details");
   }, [discovery]);
 
   // Your placeholder user/pass login (kept)
@@ -131,7 +99,7 @@ const result = await req.promptAsync(discovery, { useProxy: true });
       Alert.alert("Error", "Please enter username and password");
       return;
     }
-    router.push("/details");
+    router.replace("/home");
   };
 
   return (
