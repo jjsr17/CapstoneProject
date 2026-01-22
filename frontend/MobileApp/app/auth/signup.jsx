@@ -1,239 +1,45 @@
 // app/auth/signup.jsx
-// Final polished Signup for Expo Router + MongoDB
-// - POSTs to /api/users/signup
-// - Works on web + physical device (LAN IP)
-// - Clean validation + clear errors (never silent)
-// - Payload matches your backend expectations (email field is OK)
-
-import React, { useMemo, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  Platform,
-  ActivityIndicator,
-} from "react-native";
+import React, { useState } from "react";
+import { View, Text, TextInput, Button, Alert, Platform } from "react-native";
 import { router } from "expo-router";
 
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000"; // ✅ your LAN IP
+const API_DEVICE = "http://192.168.86.240:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
-const SIGNUP_PATH = "/api/users/signup";
-
 export default function SignupScreen() {
-  const [loading, setLoading] = useState(false);
-
-  // Use window.alert on web so you ALWAYS see messages
-  const notify = useCallback((title, msg) => {
-    const text = title ? `${title}\n\n${msg ?? ""}` : String(msg ?? "");
-    if (Platform.OS === "web") window.alert(text);
-    else Alert.alert(title || "Message", String(msg ?? ""));
-  }, []);
-
-  // ===== Required =====
-  const [accountType, setAccountType] = useState("student"); // student | educator
-  const [firstName, setFirstName] = useState("");
-  const [middleName, setMiddleName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [user_email, setUser_email] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
-  // ===== Optional =====
-  const [gender, setGender] = useState(""); // Male | Female | Other | ""
-  const [age, setAge] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-
-  const [address, setAddress] = useState("");
-  const [town, setTown] = useState("");
-  const [stateField, setStateField] = useState("");
-  const [country, setCountry] = useState("");
-  const [phone, setPhone] = useState("");
-
-  // ===== Student nested =====
-  const [student_schoolName, setStudent_schoolName] = useState("");
-  const [student_educationLevel, setStudent_educationLevel] = useState(""); // school | college | ""
-  const [student_grade, setStudent_grade] = useState("");
-  const [student_collegeYear, setStudent_collegeYear] = useState("");
-  const [student_concentration, setStudent_concentration] = useState("");
-  const [student_degreeType, setStudent_degreeType] = useState("");
-
-  // ===== Educator nested =====
-  const [educator_collegeName, setEducator_collegeName] = useState("");
-  const [educator_degree, setEducator_degree] = useState("");
-  const [educator_concentration, setEducator_concentration] = useState("");
-  const [educator_credentialsFileName, setEducator_credentialsFileName] = useState("");
-
-  const payload = useMemo(() => {
-    const base = {
-      accountType,
-      firstName: firstName.trim(),
-      middleName: middleName.trim(),
-      lastName: lastName.trim(),
-
-      // Your backend route validates p.email (and/or p.user_email),
-      // so sending `email` here is correct.
-      email: user_email.trim().toLowerCase(),
-      password,
-
-      gender: gender.trim(),
-      age: age ? Number(age) : undefined,
-      birthDate: birthDate.trim(),
-
-      address: address.trim(),
-      town: town.trim(),
-      stateField: stateField.trim(),
-      country: country.trim(),
-      phone: phone.trim(),
-    };
-
-    if (accountType === "student") {
-      base.student = {
-        schoolName: student_schoolName.trim(),
-        educationLevel: student_educationLevel, // school | college | ""
-        grade: student_grade.trim(),
-        collegeYear: student_collegeYear.trim(),
-        concentration: student_concentration.trim(),
-        degreeType: student_degreeType.trim(),
-      };
-    } else {
-      base.educator = {
-        collegeName: educator_collegeName.trim(),
-        degree: educator_degree.trim(),
-        concentration: educator_concentration.trim(),
-        credentialsFileName: educator_credentialsFileName.trim(),
-      };
-    }
-
-    return base;
-  }, [
-    accountType,
-    firstName,
-    middleName,
-    lastName,
-    user_email,
-    password,
-    gender,
-    age,
-    birthDate,
-    address,
-    town,
-    stateField,
-    country,
-    phone,
-    student_schoolName,
-    student_educationLevel,
-    student_grade,
-    student_collegeYear,
-    student_concentration,
-    student_degreeType,
-    educator_collegeName,
-    educator_degree,
-    educator_concentration,
-    educator_credentialsFileName,
-  ]);
-
-  const validate = () => {
-    if (!["student", "educator"].includes(accountType)) return "Account type must be student or educator.";
-    if (!firstName.trim()) return "First name is required.";
-    if (!lastName.trim()) return "Last name is required.";
-
-    const email = user_email.trim();
-    if (!email) return "Email is required.";
-    if (!/^\S+@\S+\.\S+$/.test(email)) return "Please enter a valid email.";
-
-    if (!password) return "Password is required.";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-
-    if (age && isNaN(Number(age))) return "Age must be a number.";
-
-    const allowedGender = ["Male", "Female", "Other", ""];
-    if (!allowedGender.includes(gender.trim())) {
-      return "Gender must be Male, Female, Other, or empty.";
-    }
-
-    const allowedEdu = ["school", "college", ""];
-    if (accountType === "student" && !allowedEdu.includes(student_educationLevel)) {
-      return "Student educationLevel must be 'school', 'college', or empty.";
-    }
-
-    return null;
-  };
-
-  const handleSignup = async () => {
-    console.log("✅ Create Account pressed");
-
-    if (loading) {
-      console.log("⏳ Ignored: already loading");
-      return;
-    }
-
-    const err = validate();
-    if (err) {
-      console.log("❌ Validation failed:", err);
-      notify("Signup error", err);
-      return;
-    }
-
-    setLoading(true);
-
+  const signup = async () => {
     try {
-      const url = `${API_URL}${SIGNUP_PATH}`;
-      console.log("➡️ POST", url);
-      console.log("➡️ Payload", payload);
-
-      const resp = await fetch(url, {
+      const resp = await fetch(`${API_URL}/api/users/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          email,
+          password,
+          firstName,
+          lastName,
+          accountType: "student", // or educator
+        }),
       });
 
-      const raw = await resp.text();
-      console.log("⬅️ Response", resp.status, raw);
-
-      let data = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch {
-        data = null;
-      }
+      const data = await resp.json();
 
       if (!resp.ok) {
-        const msg = data?.message || data?.error || raw || `HTTP ${resp.status}`;
-        notify("Signup failed", msg);
+        Alert.alert("Signup failed", data.message || "Error");
         return;
       }
 
-      notify("Success", "Account created!");
+      Alert.alert("Success", "Account created");
       router.replace("/auth/login");
     } catch (e) {
-      console.error("❌ Network error:", e);
-      notify(
-        "Network error",
-        String(e?.message ?? e) +
-          (Platform.OS !== "web"
-            ? "\n\nIf testing on a phone, API_URL cannot be localhost. Use your laptop LAN IP."
-            : "")
-      );
-    } finally {
-      setLoading(false);
+      Alert.alert("Network error", String(e));
     }
   };
-
-  const Pill = ({ label, active, onPress }) => (
-    <Pressable
-      onPress={onPress}
-      style={[styles.pill, active && styles.pillActive]}
-      disabled={loading}
-      accessibilityRole="button"
-    >
-      <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
-    </Pressable>
-  );
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -334,15 +140,9 @@ export default function SignupScreen() {
         </Pressable>
       )}
 
-      <Pressable
-        style={styles.secondaryBtn}
-        onPress={() => router.replace("/auth/login")}
-        disabled={loading}
-        accessibilityRole="button"
->
-  <Text style={styles.secondaryBtnText}>BACK</Text>
-</Pressable>
-
+      <Pressable style={styles.secondaryBtn} onPress={() => router.back()} disabled={loading} accessibilityRole="button">
+        <Text style={styles.secondaryBtnText}>BACK</Text>
+      </Pressable>
 
       <Text style={styles.debug}>POST {API_URL}{SIGNUP_PATH}</Text>
       <View style={{ height: 40 }} />

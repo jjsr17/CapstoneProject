@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, Button, StyleSheet, Alert, Platform } from "react-native";
 import { router } from "expo-router";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -9,52 +11,89 @@ WebBrowser.maybeCompleteAuthSession();
 const tenantId = "03f750b3-6ffc-46b7-8ea9-dd6d95a85164";
 const clientId = "b8a0b68a-5858-4d1c-a0c3-9d52db4696de";
 
+// Backend base (NOT /graphql)
+const API_WEB = "http://localhost:5000";
+const API_DEVICE = "http://192.168.86.240:5000"; // ✅ your LAN IP
+const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
+
+async function saveAuth(user) {
+  const mongoUserId = user?._id ? String(user._id) : "";
+  const accountType = user?.accountType ? String(user.accountType) : "";
+
+  if (!mongoUserId) return;
+
+  if (Platform.OS === "web") {
+    localStorage.setItem("mongoUserId", mongoUserId);
+    localStorage.setItem("accountType", accountType);
+  } else {
+    await AsyncStorage.setItem("mongoUserId", mongoUserId);
+    await AsyncStorage.setItem("accountType", accountType);
+  }
+}
+
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // ✅ Hook must be inside the component
   const discovery = AuthSession.useAutoDiscovery(
     `https://login.microsoftonline.com/${tenantId}/v2.0`
   );
 
   const loginWithMicrosoft = useCallback(async () => {
-    if (!discovery) {
-      Alert.alert("Loading", "Auth discovery is still loading. Try again.");
-      return;
-    }
+    try {
+      if (!discovery) {
+        Alert.alert("Loading", "Auth discovery is still loading. Try again.");
+        return;
+      }
 
-    // NOTE: for web, you often don't want useProxy; for dev it's okay.
-    const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
+      // Expo proxy works great in dev (web + device)
+      const redirectUri = AuthSession.makeRedirectUri({
+  useProxy: true,
+  // IMPORTANT: put your real Expo account + app slug here
+  // example: "@jonathansewell/mobileapp"
+  projectNameForProxy: "@YOUR_EXPO_USERNAME/YOUR_APP_SLUG",
+});
 
-    const authRequest = new AuthSession.AuthRequest({
-      clientId,
-      scopes: ["openid", "profile", "email"],
-      redirectUri,
-      responseType: AuthSession.ResponseType.IdToken,
-      extraParams: {
-        nonce: "nonce",
-      },
-    });
+const req = new AuthSession.AuthRequest({
+  clientId,
+  scopes: ["openid", "profile", "email"],
+  redirectUri,
+  responseType: AuthSession.ResponseType.IdToken,
+  extraParams: { nonce: "nonce" },
+});
 
-    const result = await authRequest.promptAsync(discovery, { useProxy: true });
 
-    if (result.type !== "success") return;
 
-    const idToken = result.params.id_token;
-    const apiUrl = "http://localhost:5000";
-    // not localhost if on phone
-    const resp = await fetch(`${apiUrl}/auth/ms-login`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
+      const authRequest = new AuthSession.AuthRequest({
+        clientId,
+        scopes: ["openid", "profile", "email"],
+        redirectUri,
+        responseType: AuthSession.ResponseType.IdToken,
+        extraParams: { nonce: "nonce" },
+      });
+
+const result = await req.promptAsync(discovery, { useProxy: true });
+      if (result.type !== "success") return;
+
+      const idToken = result.params?.id_token;
+
+      console.log("ID TOKEN:", idToken?.slice(0, 25) + "…"); // ✅ safe partial log
+
+      const resp = await fetch(`${API_URL}/auth/ms-login`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
 
     const data = await resp.json();
     console.log("Logged in user:", data.user);
 
-    router.push("/home");
+    router.push("/details");
   }, [discovery]);
 
+  // Your placeholder user/pass login (kept)
   const handleLogin = () => {
     if (!username || !password) {
       Alert.alert("Error", "Please enter username and password");
