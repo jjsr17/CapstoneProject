@@ -75,11 +75,15 @@ export default function Account() {
 
         const json = await res.json();
 
+<<<<<<< HEAD
+                <div className="site-title">Noesis</div>
+=======
         if (json.errors) {
           console.error(json.errors);
           setEvents([]);
           return;
         }
+>>>>>>> origin
 
         setEvents(
           (json.data?.sessionsByStudent ?? []).map((s) => ({

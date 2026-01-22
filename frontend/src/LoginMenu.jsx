@@ -26,67 +26,9 @@ export default function LoginMenu() {
     const raw = await resp.text();
     let data = null;
     try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {}
-
-    if (!resp.ok) {
-      const msg = data?.message || raw || `HTTP ${resp.status}`;
-      throw new Error(msg);
-    }
-
-    return data; // expected: { ok: true, user: { _id, accountType, ... } }
-  }
-
-  async function getIdTokenForAccount(account) {
-    // MSAL: try silent first (best UX), then popup if needed
-    try {
-      const silent = await instance.acquireTokenSilent({
-        ...loginRequest,
-        account,
-      });
-      return silent.idToken;
-    } catch {
-      const interactive = await instance.acquireTokenPopup({
-        ...loginRequest,
-        account,
-      });
-      return interactive.idToken;
-    }
-  }
-
-  const loginWithMicrosoft = async () => {
-    setBusy(true);
-    try {
-      // 1) Microsoft sign-in
-      const loginResult = await instance.loginPopup(loginRequest);
-      const account = loginResult.account;
-      if (!account) throw new Error("Microsoft login succeeded but no account returned.");
-
-      // 2) Get idToken (what your backend expects)
-      const idToken = await getIdTokenForAccount(account);
-      if (!idToken) throw new Error("Could not get idToken from MSAL.");
-
-      // 3) Call your backend to find/create Mongo user
-      const data = await fetchMsLogin(idToken);
-
-      const user = data?.user;
-      const mongoUserId = user?._id;
-      const accountType = user?.accountType;
-
-      if (!mongoUserId) {
-        throw new Error("Backend ms-login succeeded but did not return user._id");
-      }
-
-      // 4) Store for Account / EducatorAccount pages
-      localStorage.setItem("mongoUserId", mongoUserId);
-      if (accountType) localStorage.setItem("accountType", accountType);
-
-      // compatibility with your EducatorAccount code that reads tutorId
-      localStorage.setItem("tutorId", mongoUserId);
-
-      // 5) Route
-      if (accountType === "educator") navigate("/educatoraccount");
-      else navigate("/account");
+      const result = await instance.loginPopup(loginRequest);
+      console.log("Signed in:", result.account);
+      navigate("/mainmenu"); // ✅ router navigation
     } catch (e) {
       console.error(e);
       alert(e?.message || "Microsoft sign-in failed.");
@@ -135,6 +77,8 @@ export default function LoginMenu() {
   }
 };
 
+    navigate("/mainmenu"); // ✅ router navigation
+  };
 
   const signup = (e) => {
     e.preventDefault();
@@ -241,7 +185,7 @@ export default function LoginMenu() {
       `}</style>
 
       <div className="login-box">
-        <h1>Inov8r</h1>
+        <h1>Noesis</h1>
 
         <form onSubmit={login}>
           <div className="input-group">
