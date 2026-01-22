@@ -7,6 +7,9 @@ import Account from "./account.jsx";
 import EducatorAccount from "./educatoraccount.jsx";
 import EditProfile from "./editprofile.jsx";
 import EditEducatorProfile from "./editeducatorprofile.jsx";
+import CourseOffering from "./courseoffering.jsx";
+import Search from "./search.jsx";
+import MainMenu from "./mainmenu.jsx";
 
 export default function App() {
   return (
@@ -24,6 +27,10 @@ export default function App() {
         <Route path="/educatoraccount" element={<EducatorAccount />} />
         <Route path="/editprofile" element={<EditProfile />} />
         <Route path="/editeducatorprofile" element={<EditEducatorProfile />} />
+
+        <Route path="/courseoffering" element={<CourseOffering />} />
+        <Route path="/search" element={<Search />} />
+              <Route path="/mainmenu" element={<MainMenu /> } />
 
       </Routes>
     </BrowserRouter>

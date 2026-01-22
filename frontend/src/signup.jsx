@@ -256,7 +256,7 @@ export default function SignUpMenu() {
       `}</style>
 
       <div className="signup-box">
-        <h1>Inov8r</h1>
+        <h1>Noesis</h1>
 
         <form onSubmit={createAccount}>
           {/* Names */}

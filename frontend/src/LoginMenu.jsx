@@ -17,7 +17,7 @@ export default function LoginMenu() {
     try {
       const result = await instance.loginPopup(loginRequest);
       console.log("Signed in:", result.account);
-      navigate("/home"); // ✅ router navigation
+      navigate("/mainmenu"); // ✅ router navigation
     } catch (e) {
       console.error(e);
       alert("Microsoft sign-in failed.");
@@ -30,7 +30,7 @@ export default function LoginMenu() {
     // TODO: call your backend auth here if you still want local username/pw auth
     // console.log({ username, password });
 
-    navigate("/home"); // ✅ router navigation
+    navigate("/mainmenu"); // ✅ router navigation
   };
 
   const signup = (e) => {
@@ -137,7 +137,7 @@ export default function LoginMenu() {
       `}</style>
 
       <div className="login-box">
-        <h1>Inov8r</h1>
+        <h1>Noesis</h1>
 
         <form onSubmit={login}>
           <div className="input-group">

@@ -47,7 +47,7 @@ export default function StudentAccount() {
                     ← Back
                 </button>
 
-                <div className="site-title">Inov8r</div>
+                <div className="site-title">Noesis</div>
 
                 <div className="dropdown">
                     <button className="dropdown-btn" onClick={toggleMenu}>
