@@ -1,7 +1,8 @@
 // app/auth/signup.jsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, Alert, Platform } from "react-native";
 import { router } from "expo-router";
+import { View, Text, TextInput, Button, Alert, Platform, StyleSheet, ScrollView } from "react-native";
+
 
 const API_WEB = "http://localhost:5000";
 const API_DEVICE = "http://192.168.86.240:5000"; // your LAN IP

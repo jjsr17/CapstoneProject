@@ -38,60 +38,65 @@ export default function LoginScreen() {
   const discovery = AuthSession.useAutoDiscovery(
     `https://login.microsoftonline.com/${tenantId}/v2.0`
   );
+const loginWithMicrosoft = useCallback(async () => {
+  try {
+    if (!discovery) {
+      Alert.alert("Loading", "Auth discovery is still loading. Try again.");
+      return;
+    }
 
-  const loginWithMicrosoft = useCallback(async () => {
-    try {
-      if (!discovery) {
-        Alert.alert("Loading", "Auth discovery is still loading. Try again.");
-        return;
-      }
+    const redirectUri = AuthSession.makeRedirectUri({
+      useProxy: true,
+      // example: "@jonathansewell/mobileapp"
+      projectNameForProxy: "@YOUR_EXPO_USERNAME/YOUR_APP_SLUG",
+    });
 
-      // Expo proxy works great in dev (web + device)
-      const redirectUri = AuthSession.makeRedirectUri({
-  useProxy: true,
-  // IMPORTANT: put your real Expo account + app slug here
-  // example: "@jonathansewell/mobileapp"
-  projectNameForProxy: "@YOUR_EXPO_USERNAME/YOUR_APP_SLUG",
-});
+    const req = new AuthSession.AuthRequest({
+      clientId,
+      scopes: ["openid", "profile", "email"],
+      redirectUri,
+      responseType: AuthSession.ResponseType.IdToken,
+      extraParams: { nonce: "nonce" },
+    });
 
-const req = new AuthSession.AuthRequest({
-  clientId,
-  scopes: ["openid", "profile", "email"],
-  redirectUri,
-  responseType: AuthSession.ResponseType.IdToken,
-  extraParams: { nonce: "nonce" },
-});
+    const result = await req.promptAsync(discovery, { useProxy: true });
+    if (result.type !== "success") return;
 
+    const idToken = result.params?.id_token;
+    if (!idToken) {
+      Alert.alert("Error", "No id_token returned.");
+      return;
+    }
 
+    console.log("ID TOKEN:", idToken.slice(0, 25) + "…");
 
-      const authRequest = new AuthSession.AuthRequest({
-        clientId,
-        scopes: ["openid", "profile", "email"],
-        redirectUri,
-        responseType: AuthSession.ResponseType.IdToken,
-        extraParams: { nonce: "nonce" },
-      });
-
-const result = await req.promptAsync(discovery, { useProxy: true });
-      if (result.type !== "success") return;
-
-      const idToken = result.params?.id_token;
-
-      console.log("ID TOKEN:", idToken?.slice(0, 25) + "…"); // ✅ safe partial log
-
-      const resp = await fetch(`${API_URL}/auth/ms-login`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-          "Content-Type": "application/json",
-        },
-      });
+    const resp = await fetch(`${API_URL}/auth/ms-login`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     const data = await resp.json();
+
+    if (!resp.ok) {
+      Alert.alert("Login failed", data?.message ?? "Server error");
+      return;
+    }
+
     console.log("Logged in user:", data.user);
 
+    // optional: persist ids
+    // await saveAuth(data.user);
+
     router.push("/details");
-  }, [discovery]);
+  } catch (err) {
+    console.error(err);
+    Alert.alert("Login error", err?.message ?? "Something went wrong.");
+  }
+}, [discovery]);
+
 
   // Your placeholder user/pass login (kept)
   const handleLogin = () => {
