@@ -100,8 +100,8 @@ async function createTeamsMeetingEvent({ organizer, startLocal, endLocal, timeZo
  */
 function buildPRTimesJan25_1pm() {
   return {
-    startLocal: "2026-01-25T13:00:00",
-    endLocal: "2026-01-25T14:00:00",
+    startLocal: "2026-02-3T13:00:00",
+    endLocal: "2026-02-3T16:00:00",
     timeZone: "America/Puerto_Rico",
   };
 }
