@@ -5,7 +5,7 @@ export default function Details() {
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
       <Text>Details Screen</Text>
-      <Button title="Go back" onPress={() => router.back()} />
+      <Button title="HOW ARE " onPress={() => router.back()} />
     </View>
   );
 }

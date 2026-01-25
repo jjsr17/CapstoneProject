@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿// frontend/src/account.jsx (WEB - Vite/React)
+import React, { useEffect, useRef, useState } from "react";
 import "./account.css";
 
 import FullCalendar from "@fullcalendar/react";
@@ -8,27 +9,14 @@ import interactionPlugin from "@fullcalendar/interaction";
 
 export default function Account() {
   const menuRef = useRef(null);
+
   const [events, setEvents] = useState([]);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [student, setStudent] = useState(null);
 
-  const toggleMenu = () => {
-    if (!menuRef.current) return;
-    menuRef.current.style.display =
-      menuRef.current.style.display === "block" ? "none" : "block";
-  };
-
-  const goHome = () => (window.location.href = "mainmenu");
-  const editProfile = () => (window.location.href = "editprofile");
-
-  const settings = () => {
-    localStorage.setItem("userRole", "student");
-    window.location.href = "settings";
-  };
-
-  const logout = () => {
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("mongoUserId");
-    localStorage.removeItem("accountType");
-    window.location.href = "login";
+  const clean = (v) => {
+    const s = v == null ? "" : String(v).trim();
+    return s.length ? s : null;
   };
 
   // close menu if clicking outside
@@ -38,31 +26,58 @@ export default function Account() {
         menuRef.current.style.display = "none";
       }
     };
-
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // ✅ Load student sessions into calendar
+  // Load student profile
   useEffect(() => {
-    async function load() {
+    (async () => {
       try {
         const studentId = localStorage.getItem("mongoUserId");
-        if (!studentId) {
-          console.warn("No mongoUserId found in localStorage");
-          setEvents([]);
-          return;
-        }
+        if (!studentId) return;
+
+        const query = `
+          query ($id: ID!) {
+            userById(id: $id) {
+              _id
+              firstName
+              middleName
+              lastName
+              student { schoolName concentration }
+            }
+          }
+        `;
+
+        const res = await fetch("http://localhost:5000/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, variables: { id: studentId } }),
+        });
+
+        const json = await res.json();
+        setStudent(json.data?.userById ?? null);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  // Load bookings
+  useEffect(() => {
+    (async () => {
+      try {
+        const studentId = localStorage.getItem("mongoUserId");
+        if (!studentId) return;
 
         const query = `
           query ($studentId: ID!) {
-            sessionsByStudent(studentId: $studentId) {
+            bookingsByStudent(studentId: $studentId) {
               _id
               title
               start
               end
-              roomId
-              mode
+              iscompleted
             }
           }
         `;
@@ -75,34 +90,57 @@ export default function Account() {
 
         const json = await res.json();
 
-        if (json.errors) {
-          console.error(json.errors);
-          setEvents([]);
-          return;
-        }
-
         setEvents(
-          (json.data?.sessionsByStudent ?? []).map((s) => ({
-            id: s._id,
-            title: s.title,
-            start: s.start,
-            end: s.end,
+          (json.data?.bookingsByStudent ?? []).map((b) => ({
+            id: b._id,
+            title: b.title,
+            start: b.start,
+            end: b.end,
+            extendedProps: { iscompleted: b.iscompleted },
           }))
         );
-      } catch (err) {
-        console.error(err);
-        setEvents([]);
+      } catch (e) {
+        console.error(e);
       }
-    }
-
-    load();
+    })();
   }, []);
+
+  const displayName = student
+    ? [clean(student.firstName), clean(student.middleName), clean(student.lastName)]
+        .filter(Boolean)
+        .join(" ")
+    : "Student";
+
+  const schoolName = clean(student?.student?.schoolName) || "";
+  const concentration = clean(student?.student?.concentration) || "";
+
+  const toggleMenu = () => {
+    if (!menuRef.current) return;
+    menuRef.current.style.display =
+      menuRef.current.style.display === "block" ? "none" : "block";
+  };
+
+  const logout = () => {
+    localStorage.removeItem("mongoUserId");
+    localStorage.removeItem("accountType");
+    window.location.href = "/login";
+  };
+
+  const handleEventClick = (clickInfo) => {
+    const e = clickInfo.event;
+    setSelectedBooking({
+      id: e.id,
+      title: e.title,
+      start: e.startStr,
+      end: e.endStr,
+      iscompleted: e.extendedProps.iscompleted,
+    });
+  };
 
   return (
     <>
-      {/* Top Navigation */}
       <div className="top-bar">
-        <button className="back-btn" onClick={goHome}>
+        <button className="back-btn" onClick={() => (window.location.href = "/mainmenu")}>
           ← Back
         </button>
 
@@ -114,37 +152,26 @@ export default function Account() {
           </button>
 
           <div className="dropdown-menu" ref={menuRef}>
-            <button onClick={editProfile}>Edit Profile</button>
-            <button onClick={settings}>Settings</button>
+            <button onClick={() => (window.location.href = "/editprofile")}>Edit Profile</button>
+            <button onClick={() => (window.location.href = "/settings")}>Settings</button>
             <button onClick={logout}>Log Out</button>
           </div>
         </div>
       </div>
 
-      {/* Banner */}
       <div className="banner">
         <div className="profile-pic">
           <img src="" alt="" />
         </div>
       </div>
 
-      {/* Main Layout (uses your CSS class names) */}
       <div className="main-layout">
-        {/* LEFT */}
         <div className="profile-content">
-          <div className="profile-name">Student Name</div>
+          <div className="profile-name">{displayName}</div>
           <div className="profile-education">
-            College Student · Computer Science
+            {[schoolName, concentration].filter(Boolean).join(" · ")}
           </div>
 
-          <div className="description-box">
-            <p>
-              This is a brief description about the student in Academic level,
-              career and degree level they plan to reach.
-            </p>
-          </div>
-
-          {/* ✅ Calendar (same behavior as educator) */}
           <div className="sessions-box">
             <h3>Scheduled Tutoring & Meetings</h3>
 
@@ -158,6 +185,7 @@ export default function Account() {
               }}
               events={events}
               height="auto"
+              eventClick={handleEventClick}
             />
 
             <p className="empty-text" style={{ marginTop: 10 }}>
@@ -165,24 +193,34 @@ export default function Account() {
             </p>
           </div>
         </div>
+      </div>
 
-        {/* RIGHT */}
-        <div className="sidebar">
-          <div className="follow-box">
-            <h3>Accounts You Follow</h3>
-
-            <div className="follow-placeholder">
-              <div className="follow-banner">
-                <div className="follow-pic"></div>
-              </div>
-            </div>
-
-            <p className="empty-text">
-              You are not following any educators yet.
-            </p>
+      {selectedBooking && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setSelectedBooking(null)}
+        >
+          <div
+            style={{ background: "#fff", padding: 20, borderRadius: 12, width: "min(520px, 92vw)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Booking Details</h3>
+            <p><b>Title:</b> {selectedBooking.title}</p>
+            <p><b>Start:</b> {new Date(selectedBooking.start).toLocaleString()}</p>
+            <p><b>End:</b> {new Date(selectedBooking.end).toLocaleString()}</p>
+            <p><b>Completed:</b> {selectedBooking.iscompleted ? "Yes" : "No"}</p>
+            <button onClick={() => setSelectedBooking(null)}>Close</button>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
