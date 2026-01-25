@@ -4,6 +4,11 @@ import "./mainmenu.css";
 export default function MainMenu() {
     const [offerings, setOfferings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const firstName = localStorage.getItem("firstName");
+    const lastName = localStorage.getItem("lastName");
+
+const displayName =
+  [firstName, lastName].filter(Boolean).join(" ") || "User";
 
     useEffect(() => {
         loadLatestOfferings();
@@ -34,7 +39,17 @@ export default function MainMenu() {
         alert("Booking flow for course: " + id);
     }
 
-    return (
+    function goToAccount() {
+    const role = localStorage.getItem("accountType");
+
+    if (role === "educator") {
+        window.location.href = "/educatoraccount";
+    } else {
+        window.location.href = "/account"; // student default
+    }
+    }
+
+        return (
         <>
             {/* Title */}
             <header>
@@ -45,15 +60,17 @@ export default function MainMenu() {
             <nav>
                 <button onClick={() => goToPage("/mainmenu")}>Home</button>
                 <button onClick={() => goToPage("/search")}>Search</button>
-                <button onClick={() => goToPage("/account")}>Account</button>
+                <button onClick={goToAccount}>Account</button>
+
             </nav>
 
             {/* Main Content */}
             <div className="container">
-                <p>
-                    Welcome [username] to our website! Here you will find many tutors ready
-                    to help you succeed in your classes.
+               <p>
+                Welcome <strong>{displayName}</strong> to our website! Here you will find
+                many tutors ready to help you succeed in your classes.
                 </p>
+
 
                 <div className="card" onClick={() => openCard("news")}>
                     <h2>Latest News</h2>
@@ -85,7 +102,7 @@ export default function MainMenu() {
                     {!loading &&
                         offerings.map((c) => (
                             <div className="offering-card" key={c._id}>
-                                <strong>{c.courseName}</strong> — {c.subject}
+                                <strong>{c.courseName}</strong> ï¿½ {c.subject}
                                 {c.description && <div>{c.description}</div>}
 
                                 <div style={{ marginTop: "8px" }}>

@@ -45,22 +45,30 @@ const loginWithMicrosoft = useCallback(async () => {
       return;
     }
 
+    const projectNameForProxy = "@jjsr17/MobileApp";
+
     const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: true,
-      // example: "@jonathansewell/mobileapp"
-      projectNameForProxy: "@YOUR_EXPO_USERNAME/YOUR_APP_SLUG",
+      useProxy: Platform.OS !== "web",
+      projectNameForProxy,
     });
 
-    const req = new AuthSession.AuthRequest({
-      clientId,
-      scopes: ["openid", "profile", "email"],
-      redirectUri,
-      responseType: AuthSession.ResponseType.IdToken,
-      extraParams: { nonce: "nonce" },
-    });
+    
 
-    const result = await req.promptAsync(discovery, { useProxy: true });
-    if (result.type !== "success") return;
+
+const req = new AuthSession.AuthRequest({
+  clientId,
+  scopes: ["openid", "profile", "email"],
+  redirectUri,
+  responseType: AuthSession.ResponseType.IdToken,
+  extraParams: { nonce: "nonce" },
+});
+
+const result = await req.promptAsync(discovery, {
+  useProxy: Platform.OS !== "web",
+});
+
+
+console.log("AUTH RESULT:", result);
 
     const idToken = result.params?.id_token;
     if (!idToken) {
@@ -78,7 +86,10 @@ const loginWithMicrosoft = useCallback(async () => {
       },
     });
 
-    const data = await resp.json();
+    const text = await resp.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch { data = { message: text }; }
+
 
     if (!resp.ok) {
       Alert.alert("Login failed", data?.message ?? "Server error");
@@ -88,9 +99,9 @@ const loginWithMicrosoft = useCallback(async () => {
     console.log("Logged in user:", data.user);
 
     // optional: persist ids
-    // await saveAuth(data.user);
+     await saveAuth(data.user);
 
-    router.push("/details");
+     router.replace("/home");
   } catch (err) {
     console.error(err);
     Alert.alert("Login error", err?.message ?? "Something went wrong.");
@@ -99,13 +110,32 @@ const loginWithMicrosoft = useCallback(async () => {
 
 
   // Your placeholder user/pass login (kept)
-  const handleLogin = () => {
+const handleLogin = async () => {
+  try {
     if (!username || !password) {
       Alert.alert("Error", "Please enter username and password");
       return;
     }
-    router.replace("/home");
-  };
+
+    const resp = await fetch(`${API_URL}/api/users/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      Alert.alert("Login failed", data?.message ?? "Server error");
+      return;
+    }
+
+    await saveAuth(data.user);          // ✅ THIS is what you were missing
+    router.replace("/postlogin");       // then route
+  } catch (e) {
+    Alert.alert("Login error", String(e?.message ?? e));
+  }
+};
 
   return (
     <View style={styles.container}>

@@ -4,7 +4,6 @@ import { loginRequest } from "./authConfig";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
-//const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
 export default function LoginMenu() {
   const navigate = useNavigate();
@@ -17,18 +16,13 @@ export default function LoginMenu() {
 
   const togglePassword = () => setShowPw((v) => !v);
 
-  async function fetchMsLogin(idToken) {
-    const resp = await fetch(`${API_BASE}/auth/ms-login`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
-
-    const raw = await resp.text();
-    let data = null;
+  // ✅ define this (you were calling it but it didn't exist)
+  const loginWithMicrosoft = async () => {
+    setBusy(true);
     try {
       const result = await instance.loginPopup(loginRequest);
       console.log("Signed in:", result.account);
-      navigate("/mainmenu"); // ✅ router navigation
+      navigate("/mainmenu");
     } catch (e) {
       console.error(e);
       alert(e?.message || "Microsoft sign-in failed.");
@@ -37,52 +31,51 @@ export default function LoginMenu() {
     }
   };
 
-  const login = async (e) => {
-  e.preventDefault();
-
-  if (!username.trim()) return alert("Enter your username or email.");
-  if (!password) return alert("Enter your password.");
-
-  try {
-    const resp = await fetch(`${API_BASE}/api/users/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: username.trim(), password }),
-    });
-
-    const raw = await resp.text();
-    let data = null;
-    try { data = raw ? JSON.parse(raw) : null; } catch {}
-
-    if (!resp.ok) {
-      alert(data?.message || raw || "Login failed");
-      return;
-    }
-
-    const user = data?.user;
-    if (!user?._id) {
-      alert("Login succeeded but user id missing.");
-      return;
-    }
-
-    localStorage.setItem("mongoUserId", user._id);
-    if (user.accountType) localStorage.setItem("accountType", user.accountType);
-    localStorage.setItem("tutorId", user._id);
-
-    if (user.accountType === "educator") navigate("/educatoraccount");
-    else navigate("/account");
-  } catch (err) {
-    console.error(err);
-    alert("Server error");
-  }
-};
-
-    navigate("/mainmenu"); // ✅ router navigation
-  };
-
   const signup = (e) => {
     e.preventDefault();
     navigate("/signup");
+  };
+
+  const login = async (e) => {
+    e.preventDefault();
+
+    if (!username.trim()) return alert("Enter your username or email.");
+    if (!password) return alert("Enter your password.");
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+
+      const raw = await resp.text();
+      let data = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {}
+
+      if (!resp.ok) {
+        alert(data?.message || raw || "Login failed");
+        return;
+      }
+
+      const user = data?.user;
+      if (!user?._id) {
+        alert("Login succeeded but user id missing.");
+        return;
+      }
+
+      localStorage.setItem("mongoUserId", user._id);
+      if (user.accountType) localStorage.setItem("accountType", user.accountType);
+      localStorage.setItem("tutorId", user._id);
+
+      if (user.accountType === "educator") navigate("/educatoraccount");
+      else navigate("/account");
+    } catch (err) {
+      console.error(err);
+      alert("Server error");
+    }
   };
 
   return (

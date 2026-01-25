@@ -195,6 +195,16 @@ router.post("/login", async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+// GET /api/users/:id -> fetch one user by Mongo _id
+router.get("/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("-passwordHash").lean();
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json(user);
+  } catch (err) {
+    return res.status(400).json({ message: "Invalid user id", error: err.message });
+  }
+});
 
 
 module.exports = router;
