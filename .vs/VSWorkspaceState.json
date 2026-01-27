@@ -3,7 +3,9 @@
     "",
     "\\backend",
     "\\frontend",
+    "\\frontenddesktop",
     "\\frontend\\src"
   ],
+  "SelectedNode": "\\backend",
   "PreviewInSolutionExplorer": false
 }

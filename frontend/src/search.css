@@ -1,0 +1,95 @@
+﻿body {
+    margin: 0;
+    font-family: "Times New Roman", serif;
+    background-color: white;
+}
+
+header {
+    text-align: center;
+    padding: 25px 10px;
+    background-color: white;
+    border-bottom: 2px solid #ddd;
+}
+
+    header h1 {
+        margin: 0;
+        font-size: 50px;
+        color: blueviolet;
+    }
+
+.search-wrapper {
+    width: 80%;
+    margin: 30px auto;
+    display: flex;
+    justify-content: center;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+    .search-container input {
+        width: 700px;
+        padding: 12px;
+        font-size: 18px;
+        border-radius: 8px;
+        border: 1px solid #bbb;
+    }
+
+    .search-container select {
+        width: 220px;
+        padding: 12px;
+        font-size: 18px;
+        border-radius: 8px;
+        border: 1px solid #bbb;
+    }
+
+
+.subjects {
+    width: 80%;
+    margin: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+}
+
+.subject-card {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: 0.2s;
+    text-align: center;
+}
+
+    .subject-card:hover {
+        transform: scale(1.05);
+    }
+
+    .subject-card h2 {
+        margin: 0;
+        font-size: 26px;
+        color: #333;
+    }
+
+    .subject-card p {
+        color: #666;
+        margin-top: 10px;
+    }
+
+.subject-result {
+    margin: 12px 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: #fafafa;
+    border: 1px solid #eee;
+}
+
+.empty-text {
+    text-align: center;
+    color: #666;
+}
+

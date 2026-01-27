@@ -42,7 +42,7 @@ export default function EditProfile() {
                 <button className="back-btn" onClick={goBack}>
                     ← Back
                 </button>
-                <div className="site-title">Inov8r</div>
+                <div className="site-title">Noesis</div>
             </div>
 
             {/* Banner */}
