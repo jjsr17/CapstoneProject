@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./search.css";
 
 export default function Search() {
@@ -6,14 +7,15 @@ export default function Search() {
     const [type, setType] = useState("");
     const [courses, setCourses] = useState([]);
 
+    const navigate = useNavigate();
+
     async function fetchSubjectCourses(subject) {
         try {
             const q = encodeURIComponent(subject);
             const t = type ? `&type=${encodeURIComponent(type)}` : "";
-           const res = await fetch(
-            `http://localhost:5000/api/subjects?query=${encodeURIComponent(query)}`
+            const res = await fetch(
+                `http://localhost:5173/api/courses?subject=${q}${t}`
             );
-
             if (!res.ok) throw new Error("Failed to fetch");
             setCourses(await res.json());
         } catch (err) {
@@ -36,16 +38,21 @@ export default function Search() {
     }
 
     function book(id) {
-        alert("Booking flow for course ID: " + id);
+        navigate(`/booking?id=${id}`);
+    }
+
+    function goBack() {
+        navigate("/mainmenu");
     }
 
     return (
         <>
             <header>
+                <button className="back-btn" onClick={goBack}>← Back</button>
                 <h1>Noesis</h1>
             </header>
 
-            {/* SEARCH BAR � identical structure */}
+            {/* SEARCH BAR */}
             <div className="search-wrapper">
                 <div className="search-container">
                     <input
@@ -72,8 +79,7 @@ export default function Search() {
                 </div>
             </div>
 
-
-            {/* SUBJECT GRID � untouched */}
+            {/* SUBJECT GRID */}
             <div className="subjects">
                 <div className="subject-card" onClick={() => fetchSubjectCourses("Math")}>
                     <h2>Mathematics</h2>
@@ -116,7 +122,7 @@ export default function Search() {
                 </div>
             </div>
 
-            {/* SEARCH RESULTS � SAME WIDTH & POSITION */}
+            {/* SEARCH RESULTS */}
             <div style={{ width: "80%", margin: "30px auto" }}>
                 {courses.length === 0 ? (
                     <p className="empty-text">No course offerings found.</p>
@@ -125,7 +131,7 @@ export default function Search() {
                         <div key={c._id} className="subject-result">
                             <h3>{c.courseName}</h3>
                             <p>
-                                <strong>{c.subject}</strong> � {c.type}
+                                <strong>{c.subject}</strong> · {c.type}
                             </p>
                             <p>{c.description}</p>
                             <button onClick={() => book(c._id)}>Book</button>

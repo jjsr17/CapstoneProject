@@ -408,4 +408,3 @@ const styles = StyleSheet.create({
   },
   closeBtnText: { color: "#fff", fontWeight: "900" },
 });
-ç
