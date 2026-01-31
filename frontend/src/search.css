@@ -5,6 +5,7 @@
 }
 
 header {
+    position: relative;
     text-align: center;
     padding: 25px 10px;
     background-color: white;
@@ -17,6 +18,17 @@ header {
         color: blueviolet;
     }
 
+.back-btn {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Search */
 .search-wrapper {
     width: 80%;
     margin: 30px auto;
@@ -46,7 +58,7 @@ header {
         border: 1px solid #bbb;
     }
 
-
+/* Subjects */
 .subjects {
     width: 80%;
     margin: auto;
@@ -80,6 +92,7 @@ header {
         margin-top: 10px;
     }
 
+/* Results */
 .subject-result {
     margin: 12px 0;
     padding: 12px;
@@ -92,4 +105,3 @@ header {
     text-align: center;
     color: #666;
 }
-
