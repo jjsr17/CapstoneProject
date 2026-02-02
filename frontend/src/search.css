@@ -105,3 +105,22 @@ header {
     text-align: center;
     color: #666;
 }
+.availability-preview {
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+
+.availability-preview ul {
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+.availability-preview li {
+  margin: 4px 0;
+}
+
+.muted {
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+    

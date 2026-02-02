@@ -1,9 +1,30 @@
-import React, { useState } from "react";
+// src/LoginMenu.jsx
+import React, { useState, useCallback, useEffect } from "react";
 import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "./authConfig";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+// LocalStorage keys (keep consistent across app)
+const LS = {
+  useMsSso: "useMsSso",
+  msAccessToken: "msAccessToken",
+  mongoUserId: "mongoUserId",
+  accountType: "accountType",
+  tutorId: "tutorId",
+  profileComplete: "profileComplete",
+};
+
+// Centralized “auth mode” switch
+function setAuthMode(mode) {
+  if (mode === "ms") {
+    localStorage.setItem(LS.useMsSso, "true");
+  } else {
+    localStorage.setItem(LS.useMsSso, "false");
+    localStorage.removeItem(LS.msAccessToken);
+  }
+}
 
 export default function LoginMenu() {
   const navigate = useNavigate();
@@ -14,69 +35,148 @@ export default function LoginMenu() {
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Optional: default to local mode only if no token exists
+  useEffect(() => {
+    if (!localStorage.getItem(LS.msAccessToken)) {
+      setAuthMode("local");
+    }
+  }, []);
+
   const togglePassword = () => setShowPw((v) => !v);
 
-  // ✅ define this (you were calling it but it didn't exist)
-  const loginWithMicrosoft = async () => {
-    setBusy(true);
-    try {
-      const result = await instance.loginPopup(loginRequest);
-      console.log("Signed in:", result.account);
-      navigate("/mainmenu");
-    } catch (e) {
-      console.error(e);
-      alert(e?.message || "Microsoft sign-in failed.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const signup = (e) => {
-    e.preventDefault();
+  const goSignup = useCallback(() => {
+    setAuthMode("local");
     navigate("/signup");
-  };
+  }, [navigate]);
 
-  const login = async (e) => {
-    e.preventDefault();
+  const loginWithMicrosoft = useCallback(async () => {
+  setBusy(true);
+  try {
+    setAuthMode("ms");
 
-    if (!username.trim()) return alert("Enter your username or email.");
-    if (!password) return alert("Enter your password.");
+    const loginResp = await instance.loginPopup({
+      ...loginRequest,
+      prompt: "login",
+    });
 
+    let tokenResp;
     try {
-      const resp = await fetch(`${API_BASE}/api/users/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
+      tokenResp = await instance.acquireTokenSilent({
+        ...loginRequest,
+        account: loginResp.account,
       });
-
-      const raw = await resp.text();
-      let data = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch {}
-
-      if (!resp.ok) {
-        alert(data?.message || raw || "Login failed");
-        return;
-      }
-
-      const user = data?.user;
-      if (!user?._id) {
-        alert("Login succeeded but user id missing.");
-        return;
-      }
-
-      localStorage.setItem("mongoUserId", user._id);
-      if (user.accountType) localStorage.setItem("accountType", user.accountType);
-      localStorage.setItem("tutorId", user._id);
-
-      if (user.accountType === "educator") navigate("/educatoraccount");
-      else navigate("/account");
-    } catch (err) {
-      console.error(err);
-      alert("Server error");
+    } catch {
+      tokenResp = await instance.acquireTokenPopup({
+        ...loginRequest,
+        account: loginResp.account,
+      });
     }
-  };
+
+    // store token
+    localStorage.setItem(LS.msAccessToken, tokenResp.accessToken);
+    localStorage.setItem(LS.useMsSso, "true");
+
+    // ✅ use GraphQL "me" (no /api/users/ms-login needed)
+    const gqlResp = await fetch(API_BASE ? `${API_BASE}/graphql` : "/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tokenResp.accessToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+          query Me {
+            me {
+              _id
+              accountType
+              profileComplete
+              user_email
+              firstName
+              lastName
+            }
+          }
+        `,
+      }),
+    });
+
+    const gqlJson = await gqlResp.json();
+    const me = gqlJson?.data?.me;
+
+    if (me?._id) {
+      // persist what app uses
+      localStorage.setItem(LS.mongoUserId, me._id);
+      localStorage.setItem(LS.tutorId, me._id);
+      if (me.accountType) localStorage.setItem(LS.accountType, me.accountType);
+      localStorage.setItem("profileComplete", String(!!me.profileComplete));
+
+      // ✅ decide route based on profileComplete
+      if (me.profileComplete) {
+        navigate("/mainmenu", { replace: true });
+      } else {
+        navigate("/signup", { replace: true });
+      }
+      return;
+    }
+
+    // if me is null -> treat as needs signup
+    navigate("/signup", { replace: true });
+  } catch (e) {
+    console.error(e);
+    setAuthMode("local");
+    alert(e?.message || "Microsoft sign-in failed.");
+  } finally {
+    setBusy(false);
+  }
+}, [instance, navigate]);
+
+
+  const loginLocal = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setAuthMode("local");
+
+      if (!username.trim()) return alert("Enter your username or email.");
+      if (!password) return alert("Enter your password.");
+
+      setBusy(true);
+      try {
+        const resp = await fetch(`${API_BASE}/api/users/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim(), password }),
+        });
+
+        const raw = await resp.text();
+        let data = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {}
+
+        if (!resp.ok) {
+          alert(data?.message || raw || "Login failed");
+          return;
+        }
+
+        const user = data?.user;
+        if (!user?._id) {
+          alert("Login succeeded but user id missing.");
+          return;
+        }
+
+        localStorage.setItem(LS.mongoUserId, user._id);
+        localStorage.setItem(LS.tutorId, user._id);
+        if (user.accountType) localStorage.setItem(LS.accountType, user.accountType);
+
+        navigate("/mainmenu", { replace: true });
+      } catch (err) {
+        console.error(err);
+        alert("Server error");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [username, password, navigate]
+  );
 
   return (
     <>
@@ -155,6 +255,7 @@ export default function LoginMenu() {
           border-radius: 6px;
           border: none;
           transition: 0.2s;
+          opacity: ${busy ? 0.85 : 1};
         }
 
         .btn-login { background-color: blue; color: white; }
@@ -180,7 +281,7 @@ export default function LoginMenu() {
       <div className="login-box">
         <h1>Noesis</h1>
 
-        <form onSubmit={login}>
+        <form onSubmit={loginLocal}>
           <div className="input-group">
             <label htmlFor="username">Username / Email</label>
             <input
@@ -190,6 +291,7 @@ export default function LoginMenu() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              disabled={busy}
             />
           </div>
 
@@ -203,6 +305,7 @@ export default function LoginMenu() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                disabled={busy}
               />
               <button
                 type="button"
@@ -210,6 +313,7 @@ export default function LoginMenu() {
                 onClick={togglePassword}
                 aria-label={showPw ? "Hide password" : "Show password"}
                 title={showPw ? "Hide password" : "Show password"}
+                disabled={busy}
               >
                 👁
               </button>
@@ -217,21 +321,16 @@ export default function LoginMenu() {
           </div>
 
           <div className="button-row">
-            <button className="btn btn-signup" type="button" onClick={signup}>
+            <button className="btn btn-signup" type="button" onClick={goSignup} disabled={busy}>
               User Sign Up
             </button>
-            <button className="btn btn-login" type="submit">
-              Log In
+            <button className="btn btn-login" type="submit" disabled={busy}>
+              {busy ? "Logging in..." : "Log In"}
             </button>
           </div>
         </form>
 
-        <button
-          type="button"
-          className="sso-btn"
-          onClick={loginWithMicrosoft}
-          disabled={busy}
-        >
+        <button type="button" className="sso-btn" onClick={loginWithMicrosoft} disabled={busy}>
           {busy ? "Signing in..." : "Sign in with Microsoft"}
         </button>
       </div>

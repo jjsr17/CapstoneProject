@@ -1,59 +1,168 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const { DateTime } = require("luxon");
+
 const Booking = require("../models/Booking");
-const { createTeamsMeeting } = require("../services/teamsMeetings");
+const User = require("../models/User");
+const { createTeamsMeetingEvent } = require("../services/teamsMeetings");
 
 const router = express.Router();
 
+function isValidObjectId(id) {
+  return mongoose.Types.ObjectId.isValid(id);
+}
+
+function parseDate(value) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Graph /events with timeZone expects local time *without offset*
+ * Example: "2026-02-05T13:00:00" + timeZone "America/Puerto_Rico"
+ */
+function toLocalNoOffset(dateObj, timeZone) {
+  return DateTime.fromJSDate(dateObj, { zone: "utc" })
+    .setZone(timeZone)
+    .toFormat("yyyy-MM-dd'T'HH:mm:ss");
+}
+
+/**
+ * Choose who should be the Teams meeting organizer.
+ * Policy:
+ * 1) tutor if teamsEnabled
+ * 2) student if teamsEnabled
+ * 3) none
+ */
+function pickTeamsOrganizer({ tutor, student }) {
+  const candidates = [tutor, student];
+
+  for (const u of candidates) {
+    if (!u) continue;
+    if (!u.teamsEnabled) continue;
+
+    // organizer identifier Graph accepts: UPN/email OR AAD id
+    const organizer = u.msUpn || u.msUserId || u.user_email || null;
+    if (!organizer) continue;
+
+    return {
+      organizer,
+      organizerUser: u,
+      timeZone: u.timeZone || "America/Puerto_Rico",
+    };
+  }
+
+  return null;
+}
+
+// GET /api/bookings
 router.get("/", async (req, res) => {
-  const bookings = await Booking.find();
-  res.json(bookings);
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 }).lean();
+    res.json(bookings);
+  } catch (err) {
+    console.error("GET /api/bookings error:", err);
+    res.status(500).json({ error: "Failed to load bookings" });
+  }
 });
 
+// POST /api/bookings
 router.post("/", async (req, res) => {
   try {
-    const { tenantId, studentId, tutorId, start, end, iscompleted } = req.body;
+    const { tenantId, studentId, tutorId, start, end } = req.body || {};
 
     if (!studentId || !tutorId) {
       return res.status(400).json({ error: "studentId and tutorId are required" });
     }
-    if (!start || !end) {
-      return res.status(400).json({ error: "start and end are required for a scheduled booking" });
+    if (!isValidObjectId(studentId) || !isValidObjectId(tutorId)) {
+      return res.status(400).json({ error: "Invalid studentId or tutorId" });
     }
 
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    const startDate = parseDate(start);
+    const endDate = parseDate(end);
 
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    if (!startDate || !endDate) {
       return res.status(400).json({ error: "start/end must be valid date strings (ISO recommended)" });
     }
     if (endDate <= startDate) {
       return res.status(400).json({ error: "end must be after start" });
     }
 
-    // ✅ Create Teams meeting FIRST
-    const meeting = await createTeamsMeeting({
-      subject: "Noesis Tutoring Session",
-      startISO: startDate.toISOString(),
-      endISO: endDate.toISOString(),
-    });
+    // Prevent double booking
+    const conflict = await Booking.findOne({
+      tutorId,
+      start: { $lt: endDate },
+      end: { $gt: startDate },
+    }).lean();
 
-    // ✅ Save booking with meeting info
+    if (conflict) {
+      return res.status(409).json({ error: "This time slot is already booked." });
+    }
+
+    // Load both users (tutor + student) to decide organizer
+    const [tutor, student] = await Promise.all([
+      User.findById(tutorId).lean(),
+      User.findById(studentId).lean(),
+    ]);
+
+    // Create booking first (so Teams failure doesn't cancel booking)
     const booking = await Booking.create({
-      tenantId,
+      tenantId: tenantId ?? null,
       studentId,
       tutorId,
       start: startDate,
       end: endDate,
-      iscompleted: !!iscompleted,
+      iscompleted: false,
+      teamsMeetingId: null,
+      teamsJoinUrl: null,
 
-      teamsMeetingId: meeting.meetingId,
-      teamsJoinUrl: meeting.joinUrl,
+      // optional metadata
+      teamsOrganizerId: null,
+      teamsOrganizerUpn: null,
     });
 
-    return res.status(201).json(booking);
+    // If either person is Teams-enabled, create Teams meeting event
+    const picked = pickTeamsOrganizer({ tutor, student });
+
+    if (picked) {
+      const { organizer, organizerUser, timeZone } = picked;
+
+      try {
+        const startLocal = toLocalNoOffset(startDate, timeZone);
+        const endLocal = toLocalNoOffset(endDate, timeZone);
+
+        const meeting = await createTeamsMeetingEvent({
+          organizer,
+          startLocal,
+          endLocal,
+          timeZone,
+        });
+
+        await Booking.findByIdAndUpdate(
+          booking._id,
+          {
+            $set: {
+              teamsMeetingId: meeting.eventId,
+              teamsJoinUrl: meeting.joinUrl,
+              teamsOrganizerId: organizerUser?._id || null,
+              teamsOrganizerUpn: organizer,
+            },
+          },
+          { new: true }
+        );
+      } catch (e) {
+        console.error("Teams event creation failed:", e?.message || e);
+        // continue: booking remains valid without Teams link
+      }
+    }
+
+    const saved = await Booking.findById(booking._id).lean();
+    return res.status(201).json(saved);
   } catch (err) {
-    console.error("Create booking error:", err);
-    return res.status(500).json({ error: err.message });
+    console.error("POST /api/bookings error:", err);
+    return res.status(500).json({
+      error: err?.message || "Server error",
+    });
   }
 });
 

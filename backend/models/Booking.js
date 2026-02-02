@@ -6,13 +6,13 @@ const BookingSchema = new mongoose.Schema(
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     tutorId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
-    // ✅ ADD THESE (Option B)
     start: { type: Date, required: true },
     end: { type: Date, required: true },
 
-    // ✅ Teams meeting info
     teamsMeetingId: { type: String },
     teamsJoinUrl: { type: String },
+    teamsOrganizerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    teamsOrganizerUpn: { type: String },
 
 
     iscompleted: { type: Boolean, default: false },

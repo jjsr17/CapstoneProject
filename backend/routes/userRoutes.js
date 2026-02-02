@@ -8,12 +8,18 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
 const ACCOUNT_TYPES = ["student", "educator"];
 const GENDERS = ["Male", "Female", "Other", ""];
 
+function getMsClaims(authHeader) {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice("Bearer ".length);
+  return jwt.decode(token) || null; // TEMP decode for wiring; verify later
+}
 function pickString(v, fallback = "") {
   return typeof v === "string" ? v.trim() : fallback;
 }
@@ -124,6 +130,12 @@ router.get("/", async (req, res) => {
 router.post("/signup", async (req, res) => {
   try {
     const p = req.body;
+    const authHeader = req.headers.authorization || "";
+    const claims = getMsClaims(authHeader);
+
+    const msOid = claims?.oid || null;
+    const isMicrosoftFlow = !!msOid;
+
 
     // 1) Validate
     const validationError = validateSignupPayload(p);
@@ -131,16 +143,49 @@ router.post("/signup", async (req, res) => {
 
     const email = normalizeEmail(p);
 
-    // 2) Duplicate check
+    const userDoc = buildUserDoc(p);
+
+    // ✅ If Microsoft flow, link msOid + mark complete
+    if (isMicrosoftFlow) {
+      userDoc.authProvider = "microsoft";
+      userDoc.msOid = msOid;
+      userDoc.profileComplete = true;
+
+      // optional: you can ignore password for microsoft users
+      // but if you want to keep it, hash it:
+      if (p.password) {
+        userDoc.passwordHash = await bcrypt.hash(p.password, 12);
+      }
+
+      // ✅ Upsert by msOid, and also allow linking existing email user
+      let saved = await User.findOneAndUpdate(
+        { $or: [{ msOid }, { user_email: email }] },
+        { $set: userDoc },
+        { new: true, upsert: true }
+      );
+
+      return res.status(201).json({
+        message: "SSO profile completed",
+        user: {
+          id: saved._id,
+          accountType: saved.accountType,
+          firstName: saved.firstName,
+          lastName: saved.lastName,
+          user_email: saved.user_email,
+        },
+      });
+    }
+
+    // ✅ Local signup (unchanged behavior)
     const exists = await User.findOne({ user_email: email }).select("_id").lean();
     if (exists) return res.status(409).json({ message: "Email already exists" });
 
-    // 3) Build doc + hash password
-    const userDoc = buildUserDoc(p);
+    userDoc.authProvider = "local";
+    userDoc.profileComplete = true; // ✅ local signup is complete
     userDoc.passwordHash = await bcrypt.hash(p.password, 12);
 
-    // 4) Save
     const saved = await User.create(userDoc);
+
 
     // 5) Return minimal safe payload
     return res.status(201).json({
