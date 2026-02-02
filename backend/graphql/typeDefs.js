@@ -1,3 +1,5 @@
+const { gql } = require("apollo-server-express");
+
 const typeDefs = gql`
   type EducatorInfo {
     collegeName: String
@@ -24,6 +26,17 @@ const typeDefs = gql`
     accountType: String
     educator: EducatorInfo
     student: StudentInfo
+
+    msOid: String
+    profileComplete: Boolean!
+    authProvider: String
+  }
+
+  input CompleteProfileInput {
+    accountType: String!
+    firstName: String!
+    lastName: String!
+    phone: String
   }
 
   type TutorProfile {
@@ -44,12 +57,47 @@ const typeDefs = gql`
     iscompleted: Boolean
   }
 
+  # -----------------------
+  # Courses (NEW)
+  # -----------------------
+  type AvailabilitySlot {
+    days: [String!]!
+    startTime: String!
+    startAmPm: String!
+    endTime: String!
+    endAmPm: String!
+    mode: String!
+    location: String
+  }
+
+  type Course {
+    _id: ID!
+    courseName: String!
+    subject: String!
+    type: String!
+    description: String
+    availability: [AvailabilitySlot!]!
+  }
+
   type Query {
     ping: String!
     debugSchemaVersion: String!
-    bookingsByStudent(studentId: ID!): [BookingEvent!]!
-    bookingsByTutor(tutorId: ID!): [BookingEvent!]!
+    me: User
+
     userById(id: ID!): User
     tutorProfileByUserId(userId: ID!): TutorProfile
+
+    bookingsByStudent(studentId: ID!): [BookingEvent!]!
+    bookingsByTutor(tutorId: ID!): [BookingEvent!]!
+
+    # Courses (NEW)
+    courseById(id: ID!): Course
+    courses(query: String, subject: String, type: String): [Course!]!
+  }
+
+  type Mutation {
+    completeProfile(input: CompleteProfileInput!): User!
   }
 `;
+
+module.exports = typeDefs;

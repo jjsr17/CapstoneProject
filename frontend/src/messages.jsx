@@ -1,138 +1,189 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Messages.css";
 
 export default function Messages() {
-    const [contacts, setContacts] = useState([]);
-    const [currentConversation, setCurrentConversation] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [messageText, setMessageText] = useState("");
+  const [contacts, setContacts] = useState([]);
+  const [currentConversation, setCurrentConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [messageText, setMessageText] = useState("");
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
-    const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-    function goBack() {
-        window.location.href = "mainmenu";
+  const userId = localStorage.getItem("mongoUserId"); // ✅ current user
+  console.log("mongoUserId:", userId);
+  function goBack() {
+    window.location.href = "/mainmenu";
+  }
+
+  async function loadContacts() {
+    try {
+      setLoadingContacts(true);
+
+      if (!userId) {
+        console.warn("No mongoUserId in localStorage.");
+        setContacts([]);
+        return;
+      }
+
+      const res = await fetch("/api/messages/contacts", {
+        headers: { "x-user-id": userId },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to load contacts");
+
+      setContacts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setContacts([]);
+    } finally {
+      setLoadingContacts(false);
     }
+  }
 
-    async function loadContacts() {
-        try {
-            const res = await fetch("/api/messages/contacts");
-            const data = await res.json();
-            setContacts(data);
-        } catch (err) {
-            console.error(err);
-        }
+  async function loadMessages(conversationId) {
+    if (!conversationId) return;
+
+    try {
+      setLoadingMessages(true);
+
+      const res = await fetch(`/api/messages/${conversationId}`, {
+        headers: { "x-user-id": userId },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to load messages");
+
+      setMessages(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
     }
+  }
 
-    async function loadMessages(conversationId) {
-        if (!conversationId) return;
+  async function sendMessage() {
+    if (!messageText.trim() || !currentConversation) return;
 
-        try {
-            const res = await fetch(`/api/messages/${conversationId}`);
-            const data = await res.json();
-            setMessages(data);
-        } catch (err) {
-            console.error(err);
-        }
+    try {
+      const res = await fetch("/api/messages/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({
+          conversationId: currentConversation.conversationId,
+          text: messageText,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Send failed");
+
+      setMessageText("");
+      await loadMessages(currentConversation.conversationId);
+      await loadContacts(); // refresh ordering + preview
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send message.");
     }
+  }
 
-    async function sendMessage() {
-        if (!messageText.trim() || !currentConversation) return;
+  useEffect(() => {
+    loadContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-        try {
-            await fetch("/api/messages/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    conversationId: currentConversation.conversationId,
-                    text: messageText
-                })
-            });
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-            setMessageText("");
-            loadMessages(currentConversation.conversationId);
-        } catch (err) {
-            console.error(err);
-        }
-    }
+  return (
+    <>
+      <div className="page-header">
+        <button className="back-btn" onClick={goBack}>
+          ← Back
+        </button>
+        <div className="page-title">Messages</div>
+      </div>
 
-    useEffect(() => {
-        loadContacts();
-    }, []);
+      <div className="message-wrapper">
+        <div className="contacts">
+          <h2>Contacts</h2>
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+          {loadingContacts && <div style={{ color: "#666" }}>Loading…</div>}
 
-    return (
-        <>
-            {/* Header */}
-            <div className="page-header">
-                <button className="back-btn" onClick={goBack}>← Back</button>
-                <div className="page-title">Messages</div>
+          {!loadingContacts && contacts.length === 0 && (
+            <div style={{ color: "#666" }}>
+              No contacts yet. You’ll see contacts after you book a session.
             </div>
+          )}
 
-            {/* Main */}
-            <div className="message-wrapper">
-
-                {/* Contact List */}
-                <div className="contacts">
-                    <h2>Contacts</h2>
-                    {contacts.map(c => (
-                        <div
-                            key={c.conversationId}
-                            className={`contact ${currentConversation?.conversationId === c.conversationId ? "active" : ""
-                                }`}
-                            onClick={() => {
-                                setCurrentConversation(c);
-                                loadMessages(c.conversationId);
-                            }}
-                        >
-                            {c.name}
-                        </div>
-                    ))}
+          {contacts.map((c) => (
+            <div
+              key={c.conversationId}
+              className={`contact ${
+                currentConversation?.conversationId === c.conversationId ? "active" : ""
+              }`}
+              onClick={() => {
+                setCurrentConversation(c);
+                loadMessages(c.conversationId);
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{c.name}</div>
+              {c.lastMessageText ? (
+                <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
+                  {c.lastMessageText}
                 </div>
-
-                {/* Chat */}
-                <div className="chat">
-                    <div className="chat-header">
-                        {currentConversation ? currentConversation.name : "Select a contact"}
-                    </div>
-
-                    <div className="messages">
-                        {!currentConversation && (
-                            <div className="empty-chat">No conversation selected</div>
-                        )}
-
-                        {messages.map((m, i) => (
-                            <div
-                                key={i}
-                                className={`message ${m.sender === "me" ? "sent" : "received"}`}
-                            >
-                                {m.text}
-                            </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    <div className="chat-input">
-                        <input
-                            type="text"
-                            placeholder="Type a message..."
-                            value={messageText}
-                            onChange={e => setMessageText(e.target.value)}
-                            disabled={!currentConversation}
-                            onKeyDown={e => e.key === "Enter" && sendMessage()}
-                        />
-                        <button
-                            onClick={sendMessage}
-                            disabled={!currentConversation}
-                        >
-                            Send
-                        </button>
-                    </div>
-                </div>
-
+              ) : null}
             </div>
-        </>
-    );
+          ))}
+        </div>
+
+        <div className="chat">
+          <div className="chat-header">
+            {currentConversation ? currentConversation.name : "Select a contact"}
+          </div>
+
+          <div className="messages">
+            {!currentConversation ? (
+              <div className="empty-chat">No conversation selected</div>
+            ) : loadingMessages ? (
+              <div style={{ color: "#666" }}>Loading messages…</div>
+            ) : (
+              <>
+                {messages.map((m) => (
+                  <div
+                    key={m._id || `${m.senderId}-${m.createdAt}`}
+                    className={`message ${m.sender === "me" ? "sent" : "received"}`}
+                  >
+                    {m.text}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+
+          <div className="chat-input">
+            <input
+              type="text"
+              placeholder={currentConversation ? "Type a message..." : "Select a contact to chat"}
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              disabled={!currentConversation}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            />
+            <button onClick={sendMessage} disabled={!currentConversation}>
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
