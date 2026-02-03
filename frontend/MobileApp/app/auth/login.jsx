@@ -1,25 +1,27 @@
+// app/auth/login.jsx
 import React, { useState, useCallback } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert, Platform } from "react-native";
 import { router } from "expo-router";
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
+
+
 WebBrowser.maybeCompleteAuthSession();
 
+// Microsoft OAuth config
 const tenantId = "03f750b3-6ffc-46b7-8ea9-dd6d95a85164";
 const clientId = "b8a0b68a-5858-4d1c-a0c3-9d52db4696de";
 
-// Backend base (NOT /graphql)
+// Backend URLs
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000"; // ✅ your LAN IP
+const API_DEVICE = "http://192.168.4.30:5000"; // <-- your desktop LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
+// Helper to save logged-in user
 async function saveAuth(user) {
   const mongoUserId = user?._id ? String(user._id) : "";
   const accountType = user?.accountType ? String(user.accountType) : "";
-
   if (!mongoUserId) return;
 
   if (Platform.OS === "web") {
@@ -38,104 +40,86 @@ export default function LoginScreen() {
   const discovery = AuthSession.useAutoDiscovery(
     `https://login.microsoftonline.com/${tenantId}/v2.0`
   );
-const loginWithMicrosoft = useCallback(async () => {
-  try {
-    if (!discovery) {
-      Alert.alert("Loading", "Auth discovery is still loading. Try again.");
-      return;
+
+  // Microsoft login
+  const loginWithMicrosoft = useCallback(async () => {
+    try {
+      if (!discovery) {
+        Alert.alert("Loading", "Auth discovery is still loading. Try again.");
+        return;
+      }
+
+      const redirectUri = AuthSession.makeRedirectUri({
+        useProxy: Platform.OS !== "web",
+        projectNameForProxy: "@c4refree/MobileApp",
+      });
+
+      const req = new AuthSession.AuthRequest({
+        clientId,
+        scopes: ["openid", "profile", "email"],
+        redirectUri,
+        responseType: AuthSession.ResponseType.IdToken,
+        extraParams: { nonce: "nonce" },
+      });
+
+      const result = await req.promptAsync(discovery, {
+        useProxy: Platform.OS !== "web",
+      });
+
+      const idToken = result.params?.id_token;
+      if (!idToken) {
+        Alert.alert("Error", "No id_token returned.");
+        return;
+      }
+
+      const resp = await fetch(`${API_URL}/auth/ms-login`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
+      });
+
+      const text = await resp.text();
+      let data = {};
+      try { data = JSON.parse(text); } catch { data = { message: text }; }
+
+      if (!resp.ok) {
+        Alert.alert("Login failed", data?.message ?? "Server error");
+        return;
+      }
+
+      await saveAuth(data.user);
+      router.replace("/postlogin");
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Login error", err?.message ?? "Something went wrong.");
     }
+  }, [discovery]);
 
-    const projectNameForProxy = "@jjsr17/MobileApp";
+  // Username/password login
+  const handleLogin = async () => {
+    try {
+      if (!username || !password) {
+        Alert.alert("Error", "Please enter username and password");
+        return;
+      }
 
-    const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: Platform.OS !== "web",
-      projectNameForProxy,
-    });
+      const resp = await fetch(`${API_URL}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    
+      const data = await resp.json();
+      if (!resp.ok) {
+        Alert.alert("Login failed", data?.message ?? "Server error");
+        return;
+      }
 
-
-const req = new AuthSession.AuthRequest({
-  clientId,
-  scopes: ["openid", "profile", "email"],
-  redirectUri,
-  responseType: AuthSession.ResponseType.IdToken,
-  extraParams: { nonce: "nonce" },
-});
-
-const result = await req.promptAsync(discovery, {
-  useProxy: Platform.OS !== "web",
-});
-
-
-console.log("AUTH RESULT:", result);
-
-    const idToken = result.params?.id_token;
-    if (!idToken) {
-      Alert.alert("Error", "No id_token returned.");
-      return;
+      await saveAuth(data.user);
+      router.replace("/home");
+    } catch (e) {
+      Alert.alert("Login error", String(e?.message ?? e));
     }
-
-    console.log("ID TOKEN:", idToken.slice(0, 25) + "…");
-
-    const resp = await fetch(`${API_URL}/auth/ms-login`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    const text = await resp.text();
-    let data = {};
-    try { data = JSON.parse(text); } catch { data = { message: text }; }
-
-
-    if (!resp.ok) {
-      Alert.alert("Login failed", data?.message ?? "Server error");
-      return;
-    }
-
-    console.log("Logged in user:", data.user);
-
-    // optional: persist ids
-     await saveAuth(data.user);
-
-     router.replace("/home");
-  } catch (err) {
-    console.error(err);
-    Alert.alert("Login error", err?.message ?? "Something went wrong.");
-  }
-}, [discovery]);
-
-
-  // Your placeholder user/pass login (kept)
-const handleLogin = async () => {
-  try {
-    if (!username || !password) {
-      Alert.alert("Error", "Please enter username and password");
-      return;
-    }
-
-    const resp = await fetch(`${API_URL}/api/users/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await resp.json();
-
-    if (!resp.ok) {
-      Alert.alert("Login failed", data?.message ?? "Server error");
-      return;
-    }
-
-    await saveAuth(data.user);          // ✅ THIS is what you were missing
-    router.replace("/postlogin");       // then route
-  } catch (e) {
-    Alert.alert("Login error", String(e?.message ?? e));
-  }
-};
+  };
 
   return (
     <View style={styles.container}>
@@ -148,7 +132,6 @@ const handleLogin = async () => {
         onChangeText={setUsername}
         autoCapitalize="none"
       />
-
       <TextInput
         style={styles.input}
         placeholder="Password"

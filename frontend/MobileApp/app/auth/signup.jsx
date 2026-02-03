@@ -13,7 +13,7 @@ import {
 } from "react-native";
 
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000"; // your LAN IP
+const API_DEVICE = "http://192.168.4.30:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 const SIGNUP_PATH = "/api/users/signup";

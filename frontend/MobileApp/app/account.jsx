@@ -13,10 +13,8 @@ import {
 import { Calendar } from "react-native-calendars";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { GRAPHQL_URL } from "../lib/api";
 
-const GRAPHQL_WEB = "http://localhost:5000/graphql";
-const GRAPHQL_DEVICE = "http://192.168.86.240:5000/graphql";
-const GRAPHQL_URL = Platform.OS === "web" ? GRAPHQL_WEB : GRAPHQL_DEVICE;
 
 const USER_BY_ID = `
   query ($id: ID!) {
@@ -408,4 +406,3 @@ const styles = StyleSheet.create({
   },
   closeBtnText: { color: "#fff", fontWeight: "900" },
 });
-ç

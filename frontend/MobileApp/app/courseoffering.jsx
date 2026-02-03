@@ -13,10 +13,9 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { GRAPHQL_URL } from "../lib/api";
 
-const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000";
-const API_BASE = Platform.OS === "web" ? API_WEB : API_DEVICE;
+
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AMPM = ["AM", "PM"];
