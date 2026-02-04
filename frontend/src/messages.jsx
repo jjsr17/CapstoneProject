@@ -8,6 +8,7 @@ export default function Messages() {
   const [messageText, setMessageText] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [useTeams, setUseTeams] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -66,32 +67,68 @@ export default function Messages() {
   }
 
   async function sendMessage() {
-    if (!messageText.trim() || !currentConversation) return;
+  if (!messageText.trim() || !currentConversation) return;
 
-    try {
-      const res = await fetch("/api/messages/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId,
-        },
-        body: JSON.stringify({
-          conversationId: currentConversation.conversationId,
-          text: messageText,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Send failed");
-
-      setMessageText("");
-      await loadMessages(currentConversation.conversationId);
-      await loadContacts(); // refresh ordering + preview
-    } catch (err) {
-      console.error(err);
-      alert("Failed to send message.");
+  // ✅ Teams path
+  if (useTeams && currentConversation.teamsEligible) {
+    const graphToken = localStorage.getItem("msGraphAccessToken");
+    if (!graphToken) {
+      alert("Missing Graph token. Please sign in with Microsoft again.");
+      return;
     }
+
+    const res = await fetch("/api/messages/send-teams", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+        Authorization: `Bearer ${graphToken}`,
+      },
+      body: JSON.stringify({
+        conversationId: currentConversation.conversationId,
+        text: messageText,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("Teams send error:", data);
+      alert(data?.error || "Teams send failed");
+      return;
+    }
+
+    setMessageText("");
+    await loadMessages(currentConversation.conversationId);
+    await loadContacts();
+    return;
   }
+
+  // ✅ existing in-app path
+  try {
+    const res = await fetch("/api/messages/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({
+        conversationId: currentConversation.conversationId,
+        text: messageText,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Send failed");
+
+    setMessageText("");
+    await loadMessages(currentConversation.conversationId);
+    await loadContacts();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send message.");
+  }
+}
+
 
   useEffect(() => {
     loadContacts();
@@ -147,7 +184,19 @@ export default function Messages() {
         <div className="chat">
           <div className="chat-header">
             {currentConversation ? currentConversation.name : "Select a contact"}
+
+            {currentConversation?.teamsEligible && (
+              <label style={{ marginLeft: 12, fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={useTeams}
+                  onChange={(e) => setUseTeams(e.target.checked)}
+                />
+                {" "}Send via Teams
+              </label>
+            )}
           </div>
+
 
           <div className="messages">
             {!currentConversation ? (

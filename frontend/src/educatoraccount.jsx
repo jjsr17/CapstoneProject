@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useMsal } from "@azure/msal-react";
+
 import "./educatoraccount.css";
 
 import FullCalendar from "@fullcalendar/react";
@@ -12,6 +14,7 @@ export default function EducatorAccount() {
   const [events, setEvents] = useState([]);
   const [educator, setEducator] = useState(null);
   const [tutorProfile, setTutorProfile] = useState(null);
+  const { instance } = useMsal();
 
   // ===== Navigation =====
   function goHome() {
@@ -27,10 +30,32 @@ export default function EducatorAccount() {
     window.location.href = "/settings";
   }
 
-  function logout() {
-    localStorage.removeItem("userRole");
-    window.location.href = "/login";
+  async function logout() {
+  // clear your app storage
+  localStorage.removeItem("userRole");
+  localStorage.removeItem("mongoUserId");
+  localStorage.removeItem("tutorId");
+  localStorage.removeItem("accountType");
+  localStorage.removeItem("profileComplete");
+  localStorage.removeItem("useMsSso");
+  localStorage.removeItem("msAccessToken");
+  localStorage.removeItem("msGraphAccessToken");
+
+  // ✅ if they were logged in via Microsoft, actually sign out of MSAL too
+  const accounts = instance.getAllAccounts();
+  if (accounts.length > 0) {
+    instance.setActiveAccount(null);
+    await instance.logoutRedirect({
+      postLogoutRedirectUri: window.location.origin + "/login",
+    });
+    return; // redirect happens
   }
+
+  // local logout
+  window.location.href = "/login";
+  }
+
+
 
   // ===== Dropdown =====
   function toggleMenu(e) {
@@ -152,7 +177,7 @@ export default function EducatorAccount() {
 
   async function loadEducatorCourses() {
     try {
-      const educatorId = localStorage.getItem("userId") || "";
+      const educatorId = localStorage.getItem("mongoUserId") || "";
       const url = educatorId
         ? `http://localhost:5000/api/courses?educatorId=${encodeURIComponent(educatorId)}`
         : `http://localhost:5000/api/courses?educatorId=all`;

@@ -35,7 +35,7 @@ function normalizeEmail(p) {
   return raw ? raw.toLowerCase() : "";
 }
 
-function validateSignupPayload(p) {
+function validateSignupPayload(p, { isMicrosoftFlow } = {}) {
   if (!p || typeof p !== "object") return "Missing request body";
 
   const accountType = pickString(p.accountType);
@@ -48,19 +48,20 @@ function validateSignupPayload(p) {
   const email = normalizeEmail(p);
   if (!email) return "Email is required";
 
-  const password = p.password;
-  if (!password || typeof password !== "string") return "password is required";
-  if (password.length < 6) return "password must be at least 6 characters";
+  // ✅ Only require password for LOCAL flow
+  if (!isMicrosoftFlow) {
+    const password = p.password;
+    if (!password || typeof password !== "string") return "password is required";
+    if (password.length < 6) return "password must be at least 6 characters";
+  }
 
   const gender = p.gender ?? "";
   if (!GENDERS.includes(gender)) return "gender must be 'Male', 'Female', 'Other', or ''";
 
-  // Optional: enforce nested object based on account type
-  // if (accountType === "student" && !p.student) return "student object is required for student accountType";
-  // if (accountType === "educator" && !p.educator) return "educator object is required for educator accountType";
-
   return null;
 }
+
+
 
 function buildUserDoc(p) {
   const accountType = pickString(p.accountType);
@@ -134,11 +135,17 @@ router.post("/signup", async (req, res) => {
     const claims = getMsClaims(authHeader);
 
     const msOid = claims?.oid || null;
+    const msUpn =
+      claims?.preferred_username ||
+      claims?.upn ||
+      claims?.unique_name ||
+      null;
+
     const isMicrosoftFlow = !!msOid;
 
 
     // 1) Validate
-    const validationError = validateSignupPayload(p);
+    const validationError = validateSignupPayload(p, { isMicrosoftFlow });
     if (validationError) return res.status(400).json({ message: validationError });
 
     const email = normalizeEmail(p);
@@ -147,9 +154,22 @@ router.post("/signup", async (req, res) => {
 
     // ✅ If Microsoft flow, link msOid + mark complete
     if (isMicrosoftFlow) {
+
       userDoc.authProvider = "microsoft";
       userDoc.msOid = msOid;
       userDoc.profileComplete = true;
+
+     const msUpn =
+        pickString(claims?.preferred_username) ||
+        pickString(claims?.upn) ||
+        pickString(claims?.unique_name) ||
+        email; // fallback
+
+      userDoc.msUpn = msUpn;
+      userDoc.timeZone = userDoc.timeZone || "America/Puerto_Rico";
+
+      // ✅ allow tutors/educators to host Teams meetings
+      userDoc.teamsEnabled = userDoc.accountType === "educator";
 
       // optional: you can ignore password for microsoft users
       // but if you want to keep it, hash it:

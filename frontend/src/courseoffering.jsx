@@ -147,9 +147,16 @@ export default function CourseOffering() {
     }
 
     const educatorId =
-      localStorage.getItem("mongoUserId") || localStorage.getItem("userId") || null;
+      localStorage.getItem("mongoUserId") || localStorage.getItem("userId");
+
+    if (!educatorId) {
+      alert("Missing educatorId. Please log in again.");
+      return;
+    }
+
 
     const payload = {
+      educatorId,
       type,
       subject: finalSubject,
       courseName: trimStr(courseName),

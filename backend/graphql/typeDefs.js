@@ -28,6 +28,8 @@ const typeDefs = gql`
     student: StudentInfo
 
     msOid: String
+    msUpn: String 
+    teamsEnabled: Boolean
     profileComplete: Boolean!
     authProvider: String
   }
@@ -82,6 +84,7 @@ const typeDefs = gql`
   type Query {
     ping: String!
     debugSchemaVersion: String!
+    debugSchemaVersion2: String!
     me: User
 
     userById(id: ID!): User

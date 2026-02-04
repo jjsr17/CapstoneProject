@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const UserSchema = new mongoose.Schema(
   {
     tenantId: { type: Number, default: 0 },

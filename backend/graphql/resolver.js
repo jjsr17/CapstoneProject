@@ -6,7 +6,6 @@ const TutorProfile = require("./models/TutorProfile");
 const Booking = require("./models/Booking");
 const Subject = require("./models/Subject");
 
-
 // -----------------------
 // Helpers
 // -----------------------
@@ -40,14 +39,16 @@ const mapBookingToEvent = (b) => {
   };
 };
 
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const buildCourseFilter = ({ query, subject, type }) => {
   const filter = {};
 
   if (subject) {
-    // exact match ignoring case
     filter.subject = new RegExp(`^${escapeRegExp(subject)}$`, "i");
   }
-
   if (type) filter.type = type;
 
   if (query && query.trim()) {
@@ -62,10 +63,6 @@ const buildCourseFilter = ({ query, subject, type }) => {
   return filter;
 };
 
-function escapeRegExp(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 // -----------------------
 // Resolvers
 // -----------------------
@@ -75,48 +72,49 @@ const resolvers = {
     debugSchemaVersion: () => "sso-v1",
 
     me: async (_, __, { authHeader }) => {
-  const claims = getMsClaims(authHeader);
-  
-  if (!claims?.oid) return null;
+      const claims = getMsClaims(authHeader);
 
-  const msOid = String(claims.oid);
-  
-  const tokenEmail = String(
-    claims.preferred_username || claims.upn || claims.email || ""
-  )
-    .trim()
-    .toLowerCase();
+      console.log(
+        "✅ oid:",
+        claims?.oid,
+        "upn:",
+        claims?.preferred_username || claims?.upn
+      );
 
-  // 1) Fast path: already linked
-  let user = await User.findOne({ msOid }).lean();
-  if (user) return { ...user, profileComplete: !!user.profileComplete };
+      if (!claims?.oid) return null;
 
-  // 2) Link path: match an existing local user by email (case-insensitive)
-  if (tokenEmail) {
-    const existing = await User.findOne({
-      user_email: new RegExp(`^${escapeRegExp(tokenEmail)}$`, "i"),
-    });
+      const msOid = String(claims.oid);
 
-    if (existing) {
-      // ✅ Link this account to MS identity
-      existing.msOid = msOid;
-      existing.msUpn = tokenEmail;
+      const tokenEmail = String(
+        claims.preferred_username || claims.upn || claims.email || ""
+      )
+        .trim()
+        .toLowerCase();
 
-      // Don't clobber local auth — keep it "local" if they already have a password
-      // (Optional) if you prefer to mark that MS is now linked:
-      // existing.authProvider = "microsoft";
+      // 1) Fast path: already linked
+      let user = await User.findOne({ msOid }).lean();
+      if (user) return { ...user, profileComplete: !!user.profileComplete };
 
-      await existing.save();
+      // 2) Link path: match an existing local user by email (case-insensitive)
+      if (tokenEmail) {
+        const existing = await User.findOne({
+          user_email: new RegExp(`^${escapeRegExp(tokenEmail)}$`, "i"),
+        });
 
-      const linked = existing.toObject();
-      return { ...linked, profileComplete: !!linked.profileComplete };
-          }
+        if (existing) {
+          existing.msOid = msOid;
+          existing.msUpn = tokenEmail;
+          existing.teamsEnabled = true; // optional: ensure it flips on link
+          await existing.save();
+
+          const linked = existing.toObject();
+          return { ...linked, profileComplete: !!linked.profileComplete };
         }
+      }
 
-        // 3) Not found -> no user yet (signup flow)
-        return null;
-      },
-
+      // 3) Not found -> no user yet (signup flow)
+      return null;
+    },
 
     userById: async (_, { id }) => User.findById(id).lean(),
 
@@ -133,68 +131,61 @@ const resolvers = {
       return bookings.map(mapBookingToEvent).filter(Boolean);
     },
 
-    // -----------------------
-    // Courses (NEW)
-    // -----------------------
-          courseById: async (_, { id }) => {
-        return Subject.findById(id).lean();
-      },
+    courseById: async (_, { id }) => Subject.findById(id).lean(),
 
-      courses: async (_, args) => {
-        const filter = buildCourseFilter(args);
-        return Subject.find(filter).lean();
-      },
-
-        },
+    courses: async (_, args) => {
+      const filter = buildCourseFilter(args);
+      return Subject.find(filter).lean();
+    },
+  },
 
   Mutation: {
-   completeProfile: async (_, { input }, { authHeader }) => {
-  const claims = getMsClaims(authHeader);
-  if (!claims?.oid) throw new Error("Not authenticated");
+    completeProfile: async (_, { input }, { authHeader }) => {
+      const claims = getMsClaims(authHeader);
+      if (!claims?.oid) throw new Error("Not authenticated");
 
-  const msOid = String(claims.oid);
+      const msOid = String(claims.oid);
 
-  const email = String(
-    claims.preferred_username || claims.upn || claims.email || ""
-  )
-    .trim()
-    .toLowerCase();
+      const email = String(
+        claims.preferred_username || claims.upn || claims.email || ""
+      )
+        .trim()
+        .toLowerCase();
 
-  if (!email) throw new Error("Microsoft token missing email/UPN");
+      if (!email) throw new Error("Microsoft token missing email/UPN");
 
-  // 1) find by msOid
-  let user = await User.findOne({ msOid });
+      // 1) find by msOid
+      let user = await User.findOne({ msOid });
 
-  // 2) else link by email
-  if (!user) {
-    user = await User.findOne({
-      user_email: new RegExp(`^${escapeRegExp(email)}$`, "i"),
-    });
-  }
+      // 2) else link by email (case-insensitive)
+      if (!user) {
+        user = await User.findOne({
+          user_email: new RegExp(`^${escapeRegExp(email)}$`, "i"),
+        });
+      }
 
-  // 3) else create shell
-  if (!user) user = new User({ user_email: email });
+      // 3) else create shell
+      if (!user) user = new User({ user_email: email });
 
-  // Link MS identity
-  user.msOid = msOid;
-  user.msUpn = email;
-  user.teamsEnabled = true;
-  user.timeZone = "America/Puerto_Rico";
+      // Link MS identity + enable Teams
+      user.msOid = msOid;
+      user.msUpn = email;
+      user.teamsEnabled = true;
+      user.timeZone = "America/Puerto_Rico";
 
-  // If they already had local auth, keep it; otherwise mark microsoft
-  user.authProvider = user.passwordHash ? "local" : "microsoft";
+      // Preserve local auth if they already had it
+      user.authProvider = user.passwordHash ? "local" : "microsoft";
 
-  // Apply submitted profile fields
-  user.accountType = input.accountType;
-  user.firstName = input.firstName;
-  user.lastName = input.lastName;
-  user.phone = input.phone || "";
+      // Apply submitted fields
+      user.accountType = input.accountType;
+      user.firstName = input.firstName;
+      user.lastName = input.lastName;
+      user.phone = input.phone || "";
+      user.profileComplete = true;
 
-  user.profileComplete = true;
-
-  await user.save();
-  return user.toObject();
-},
+      await user.save();
+      return user.toObject();
+    },
   },
 };
 

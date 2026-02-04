@@ -11,12 +11,31 @@ import { client } from "./apolloClient";
 
 const pca = new PublicClientApplication(msalConfig);
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
+async function bootstrap() {
+  // ✅ required in MSAL v3
+  await pca.initialize();
+
+  // ✅ process redirect response once
+  await pca.handleRedirectPromise();
+
+  ReactDOM.createRoot(document.getElementById("root")).render(
     <MsalProvider instance={pca}>
       <ApolloProvider client={client}>
         <App />
       </ApolloProvider>
     </MsalProvider>
-  </React.StrictMode>
-);
+  );
+}
+
+bootstrap().catch((e) => {
+  console.error("MSAL bootstrap failed:", e);
+
+  // still render app so you can see UI even if auth fails
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <MsalProvider instance={pca}>
+      <ApolloProvider client={client}>
+        <App />
+      </ApolloProvider>
+    </MsalProvider>
+  );
+});
