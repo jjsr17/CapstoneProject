@@ -1,5 +1,6 @@
 import express from "express";
 import User from "../../models/User.js";
+import { verifyMicrosoftJwt } from "../auth/verifyMicrosoftJwt.js";
 
 const router = express.Router();
 
@@ -25,7 +26,6 @@ router.post("/signup", async (req, res) => {
 
     const user = await User.create({
       accountType,
-
       firstName,
       middleName: data.middleName || "",
       lastName,
@@ -38,7 +38,6 @@ router.post("/signup", async (req, res) => {
       town: data.town || "",
       stateField: data.stateField || data.state || "",
       country: data.country || "",
-
       phone: data.phone || "",
 
       user_email: email,
@@ -46,12 +45,10 @@ router.post("/signup", async (req, res) => {
       student: accountType === "student" ? data.student : undefined,
       educator: accountType === "educator" ? data.educator : undefined,
 
-      // If your schema has it, keep it; otherwise remove these two lines
       profileComplete: true,
       authProvider: data.authProvider || "local",
     });
 
-    // ✅ Return what the frontend needs (user id + role)
     return res.status(201).json({
       ok: true,
       user: {
@@ -70,24 +67,40 @@ router.post("/signup", async (req, res) => {
     return res.status(500).json({ ok: false, message: err?.message || "Server error" });
   }
 });
-// routes/users.js
+
 router.post("/ms-login", async (req, res) => {
   try {
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-
     if (!token) return res.status(401).json({ ok: false, message: "Missing token" });
 
-    // TODO: verify token + extract email
-    // For now assume you have email somehow:
-    const email = req.body?.email; // <- replace this with verified token claim
-    if (!email) return res.status(400).json({ ok: false, message: "Missing email" });
+    // ✅ Verify token and extract claims
+    const claims = await verifyMicrosoftJwt(token);
 
-    const user = await User.findOne({ user_email: String(email).toLowerCase().trim() });
+    const msOid = claims.oid;
+    const msUpn = claims.preferred_username || claims.upn || "";
+    const email = String((claims.email || msUpn || "")).toLowerCase().trim();
+
+    console.log("✅ MS CLAIMS oid:", msOid, "upn:", msUpn);
+
+    if (!msOid) return res.status(400).json({ ok: false, message: "Token missing oid claim" });
+    if (!email) return res.status(400).json({ ok: false, message: "Token missing email/upn" });
+
+    // Find by msOid first, then email
+    let user = (await User.findOne({ msOid })) || (await User.findOne({ user_email: email }));
 
     if (!user) {
-      return res.status(404).json({ ok: false, needsSignup: true });
+      return res.status(404).json({ ok: false, needsSignup: true, email });
     }
+
+    // ✅ Link microsoft identity onto the existing user
+    user.authProvider = "microsoft";
+    user.msOid = msOid;
+    user.msUpn = msUpn || user.msUpn;
+    user.teamsEnabled = true; // or keep existing if you want
+    user.user_email = user.user_email || email;
+
+    await user.save();
 
     return res.json({
       ok: true,
@@ -98,13 +111,14 @@ router.post("/ms-login", async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         user_email: user.user_email,
+        authProvider: user.authProvider,
+        teamsEnabled: user.teamsEnabled,
       },
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ ok: false, message: "Server error" });
+    console.error("ms-login error:", err);
+    return res.status(500).json({ ok: false, message: err?.message || "Server error" });
   }
 });
-
 
 export default router;

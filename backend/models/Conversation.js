@@ -8,6 +8,7 @@ const ConversationSchema = new mongoose.Schema(
     // optional convenience fields
     lastMessageText: { type: String, default: "" },
     lastMessageAt: { type: Date, default: null },
+    teamsChatId: { type: String, default: "" },
   },
   { timestamps: true }
 );
