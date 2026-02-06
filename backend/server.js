@@ -2,6 +2,8 @@
 console.log("✅ BACKEND server.js loaded");
 
 require("dotenv").config();
+const whiteboardRoutes = require ("./routes/whiteBoard.js");
+
 
 const express = require("express");
 const cors = require("cors");
@@ -62,7 +64,7 @@ app.use("/api/subjects", subjectRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/messages", messageRoutes);
-
+app.use("/api/whiteboard", whiteboardRoutes);
 
 
 console.log(

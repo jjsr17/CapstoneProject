@@ -20,6 +20,7 @@ export const graphRequest = {
   scopes: [
     "User.Read",
     "Chat.ReadWrite",
-    "ChatMessage.Send"
+    "ChatMessage.Send",
+    "TeamsTab.Create"
   ]
 };

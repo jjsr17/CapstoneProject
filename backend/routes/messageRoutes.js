@@ -9,6 +9,8 @@ const Booking = require("../models/Booking");
 
 const router = express.Router();
 
+const GRAPH_ROOT = "https://graph.microsoft.com/v1.0";
+
 /* ---------------- helpers ---------------- */
 
 function isValidObjectId(id) {
@@ -29,10 +31,24 @@ function requireMe(req, res) {
   return meId;
 }
 
+function requireGraphToken(req, res) {
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!token) {
+    res.status(401).json({ error: "Missing Authorization Bearer token (Graph token)" });
+    return null;
+  }
+  return token;
+}
+
 function displayName(u) {
   if (!u) return "Unknown";
   const name = `${u.firstName || ""} ${u.lastName || ""}`.trim();
   return name || u.user_email || "Unknown";
+}
+
+function isTeamsUser(u) {
+  return !!u && u.authProvider === "microsoft" && !!u.msOid && u.teamsEnabled === true;
 }
 
 /**
@@ -51,6 +67,7 @@ async function findOrCreateDM(meId, otherId) {
       isGroup: false,
       lastMessageText: "",
       lastMessageAt: null,
+      teamsChatId: "",
     });
   }
   return convo;
@@ -81,7 +98,80 @@ async function getBookedCounterpartIds(meId) {
   return Array.from(ids);
 }
 
+/* ---------------- Graph helpers (Teams chat) ---------------- */
+
+// Create a 1:1 Teams chat between two AAD users (by object id / msOid)
+async function createOneOnOneChat(graphToken, meOid, otherOid) {
+  const res = await fetch(`${GRAPH_ROOT}/chats`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${graphToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      chatType: "oneOnOne",
+      members: [
+        {
+          "@odata.type": "#microsoft.graph.aadUserConversationMember",
+          roles: ["owner"],
+          "user@odata.bind": `${GRAPH_ROOT}/users('${meOid}')`,
+        },
+        {
+          "@odata.type": "#microsoft.graph.aadUserConversationMember",
+          roles: ["owner"],
+          "user@odata.bind": `${GRAPH_ROOT}/users('${otherOid}')`,
+        },
+      ],
+    }),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+
+// Find an existing 1:1 chat by scanning my chats
+async function findExistingOneOnOneChat(graphToken, otherOid) {
+  const listRes = await fetch(`${GRAPH_ROOT}/me/chats?$top=50`, {
+    headers: { Authorization: `Bearer ${graphToken}` },
+  });
+  const listJson = await listRes.json().catch(() => ({}));
+  const chats = Array.isArray(listJson.value) ? listJson.value : [];
+  const oneOnOnes = chats.filter((c) => c.chatType === "oneOnOne");
+
+  for (const chat of oneOnOnes) {
+    const membersRes = await fetch(`${GRAPH_ROOT}/chats/${chat.id}/members`, {
+      headers: { Authorization: `Bearer ${graphToken}` },
+    });
+    const membersJson = await membersRes.json().catch(() => ({}));
+    const members = Array.isArray(membersJson.value) ? membersJson.value : [];
+
+    const hasOther = members.some(
+      (m) => String(m.userId || "").toLowerCase() === String(otherOid).toLowerCase()
+    );
+    if (hasOther) return chat.id;
+  }
+
+  return null;
+}
+
+async function sendChatMessage(graphToken, chatId, text) {
+  const res = await fetch(`${GRAPH_ROOT}/chats/${encodeURIComponent(chatId)}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${graphToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      body: { contentType: "text", content: text },
+    }),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+
 /* ---------------- routes ---------------- */
+
 router.get("/debug/teams/:otherUserId", async (req, res) => {
   const meId = requireMe(req, res);
   if (!meId) return;
@@ -91,8 +181,12 @@ router.get("/debug/teams/:otherUserId", async (req, res) => {
     return res.status(400).json({ error: "Invalid otherUserId" });
   }
 
-  const me = await User.findById(meId).select({ authProvider: 1, msOid: 1, teamsEnabled: 1, user_email: 1 }).lean();
-  const other = await User.findById(otherUserId).select({ authProvider: 1, msOid: 1, teamsEnabled: 1, user_email: 1 }).lean();
+  const me = await User.findById(meId)
+    .select({ authProvider: 1, msOid: 1, teamsEnabled: 1, user_email: 1 })
+    .lean();
+  const other = await User.findById(otherUserId)
+    .select({ authProvider: 1, msOid: 1, teamsEnabled: 1, user_email: 1 })
+    .lean();
 
   return res.json({ me, other });
 });
@@ -108,40 +202,44 @@ router.get("/contacts", async (req, res) => {
     if (!meId) return;
 
     const counterpartIds = await getBookedCounterpartIds(meId);
+    if (counterpartIds.length === 0) return res.json([]);
+
     const me = await User.findById(meId)
       .select({ authProvider: 1, msOid: 1, teamsEnabled: 1 })
       .lean();
 
-    const isTeamsUser = (u) =>
-      !!u && u.authProvider === "microsoft" && !!u.msOid && u.teamsEnabled === true;
-
     const meTeams = isTeamsUser(me);
 
-    if (counterpartIds.length === 0) return res.json([]);
-
     // Load users in one query
- const users = await User.find({ _id: { $in: counterpartIds } })
-  .select({ firstName: 1, lastName: 1, user_email: 1, authProvider: 1, msOid: 1, teamsEnabled: 1 })
-  .lean();
+    const users = await User.find({ _id: { $in: counterpartIds } })
+      .select({
+        firstName: 1,
+        lastName: 1,
+        user_email: 1,
+        authProvider: 1,
+        msOid: 1,
+        teamsEnabled: 1,
+      })
+      .lean();
 
-
-    // For each allowed user, ensure convo exists and return contact row
     const results = [];
     for (const u of users) {
       const otherId = String(u._id);
       const convo = await findOrCreateDM(meId, otherId);
 
+      const eligible = meTeams && isTeamsUser(u);
+
       results.push({
-  conversationId: String(convo._id),
-  userId: otherId,
-  name: displayName(u),
-  lastMessageText: convo.lastMessageText || "",
-  lastMessageAt: convo.lastMessageAt || null,
+        conversationId: String(convo._id),
+        userId: otherId,
+        name: displayName(u),
+        lastMessageText: convo.lastMessageText || "",
+        lastMessageAt: convo.lastMessageAt || null,
 
-  // ✅ Teams allowed if BOTH users are Microsoft + enabled
-  teamsEligible: meTeams && isTeamsUser(u),
-});
-
+        // ✅ include these for frontend
+        teamsEligible: eligible,
+        teamsChatId: convo.teamsChatId || "",
+      });
     }
 
     // Sort newest conversations first
@@ -154,12 +252,11 @@ router.get("/contacts", async (req, res) => {
     return res.json(results);
   } catch (err) {
     console.error("GET /contacts error:", err);
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
 /**
- * OPTIONAL:
  * POST /api/messages/conversations
  * Body: { otherUserId }
  * Opens a DM ONLY if you have a booking relationship.
@@ -177,7 +274,6 @@ router.post("/conversations", async (req, res) => {
       return res.status(400).json({ error: "Cannot create conversation with yourself" });
     }
 
-    // Enforce booking relationship
     const allowedIds = await getBookedCounterpartIds(meId);
     if (!allowedIds.includes(String(otherUserId))) {
       return res.status(403).json({ error: "You can only message users you have booked with." });
@@ -191,10 +287,11 @@ router.post("/conversations", async (req, res) => {
     return res.json({
       conversationId: String(convo._id),
       name: displayName(other),
+      teamsChatId: convo.teamsChatId || "",
     });
   } catch (err) {
     console.error("POST /conversations error:", err);
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
@@ -218,9 +315,7 @@ router.get("/:conversationId", async (req, res) => {
     const isParticipant = (convo.participants || []).some((p) => String(p) === String(meId));
     if (!isParticipant) return res.status(403).json({ error: "Not allowed" });
 
-    const msgs = await Message.find({ conversationId })
-      .sort({ createdAt: 1 })
-      .lean();
+    const msgs = await Message.find({ conversationId }).sort({ createdAt: 1 }).lean();
 
     return res.json(
       msgs.map((m) => ({
@@ -234,7 +329,7 @@ router.get("/:conversationId", async (req, res) => {
     );
   } catch (err) {
     console.error("GET /:conversationId error:", err);
-    return res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
@@ -277,95 +372,11 @@ router.post("/send", async (req, res) => {
     await convo.save();
 
     return res.status(201).json({ ok: true, messageId: String(msg._id), createdAt: msg.createdAt });
-  }catch (err) {
-  console.error("contacts error:", err);
-  return res.status(500).json({ error: err.message || "Server error" });
-}
+   } catch (err) {
+    console.error("POST /send error:", err);
+    return res.status(500).json({ error: err.message || "Server error" });
+  }
 });
-function requireGraphToken(req, res) {
-  const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token) {
-    res.status(401).json({ error: "Missing Authorization Bearer token (Graph token)" });
-    return null;
-  }
-  return token;
-}
-
-function isTeamsUser(u) {
-  return !!u && u.authProvider === "microsoft" && !!u.msOid && u.teamsEnabled === true;
-}
-
-// Create a 1:1 Teams chat between two AAD users (by object id / msOid)
-async function createOneOnOneChat(graphToken, meOid, otherOid) {
-  const res = await fetch("https://graph.microsoft.com/v1.0/chats", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${graphToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      chatType: "oneOnOne",
-      members: [
-        {
-          "@odata.type": "#microsoft.graph.aadUserConversationMember",
-          roles: ["owner"],
-          "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${meOid}')`,
-        },
-        {
-          "@odata.type": "#microsoft.graph.aadUserConversationMember",
-          roles: ["owner"],
-          "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${otherOid}')`,
-        },
-      ],
-    }),
-  });
-
-  const json = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, json };
-}
-
-// Find an existing 1:1 chat by scanning my chats (fallback when create fails)
-async function findExistingOneOnOneChat(graphToken, otherOid) {
-  // Grab a page of chats
-  const listRes = await fetch("https://graph.microsoft.com/v1.0/me/chats?$top=50", {
-    headers: { Authorization: `Bearer ${graphToken}` },
-  });
-  const listJson = await listRes.json().catch(() => ({}));
-  const chats = Array.isArray(listJson.value) ? listJson.value : [];
-  const oneOnOnes = chats.filter((c) => c.chatType === "oneOnOne");
-
-  // For each oneOnOne chat, check members for otherOid
-  for (const chat of oneOnOnes) {
-    const membersRes = await fetch(
-      `https://graph.microsoft.com/v1.0/chats/${chat.id}/members`,
-      { headers: { Authorization: `Bearer ${graphToken}` } }
-    );
-    const membersJson = await membersRes.json().catch(() => ({}));
-    const members = Array.isArray(membersJson.value) ? membersJson.value : [];
-
-    const hasOther = members.some((m) => String(m.userId || "").toLowerCase() === String(otherOid).toLowerCase());
-    if (hasOther) return chat.id;
-  }
-
-  return null;
-}
-
-async function sendChatMessage(graphToken, chatId, text) {
-  const res = await fetch(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${graphToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      body: { contentType: "text", content: text },
-    }),
-  });
-
-  const json = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, json };
-}
 
 /**
  * POST /api/messages/send-teams
@@ -390,24 +401,20 @@ router.post("/send-teams", async (req, res) => {
     const cleanText = String(text || "").trim();
     if (!cleanText) return res.status(400).json({ error: "Message text required" });
 
-    // Must be participant
     const convo = await Conversation.findById(conversationId);
     if (!convo) return res.status(404).json({ error: "Conversation not found" });
 
     const isParticipant = (convo.participants || []).some((p) => String(p) === String(meId));
     if (!isParticipant) return res.status(403).json({ error: "Not allowed" });
 
-    // Determine other user
     const otherId = (convo.participants || []).map(String).find((id) => id !== String(meId));
     if (!otherId) return res.status(400).json({ error: "Conversation missing other user" });
 
-    // Enforce booking relationship (same rule as your contacts)
     const allowedIds = await getBookedCounterpartIds(meId);
     if (!allowedIds.includes(String(otherId))) {
       return res.status(403).json({ error: "You can only message users you have booked with." });
     }
 
-    // Load users for Teams eligibility
     const me = await User.findById(meId).select({ authProvider: 1, msOid: 1, teamsEnabled: 1 }).lean();
     const other = await User.findById(otherId).select({ authProvider: 1, msOid: 1, teamsEnabled: 1 }).lean();
 
@@ -426,7 +433,6 @@ router.post("/send-teams", async (req, res) => {
         convo.teamsChatId = chatId;
         await convo.save();
       } else {
-        // Fallback: try to find an existing 1:1 chat
         const foundChatId = await findExistingOneOnOneChat(graphToken, other.msOid);
         if (!foundChatId) {
           return res.status(created.status || 500).json({
@@ -440,7 +446,6 @@ router.post("/send-teams", async (req, res) => {
       }
     }
 
-    // Send Teams message
     const sent = await sendChatMessage(graphToken, chatId, cleanText);
     if (!sent.ok) {
       return res.status(sent.status || 500).json({
@@ -449,7 +454,6 @@ router.post("/send-teams", async (req, res) => {
       });
     }
 
-    // Optional: also write to your local Message collection (so your UI shows history)
     const msg = await Message.create({
       conversationId,
       senderId: meId,

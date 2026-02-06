@@ -44,6 +44,51 @@ export default function Messages() {
     }
   }
 
+  async function startWhiteboard() {
+  if (!currentConversation?.teamsEligible) return;
+
+  const graphToken = localStorage.getItem("msGraphAccessToken");
+  if (!graphToken) {
+    alert("Missing Graph token. Please sign in with Microsoft again.");
+    return;
+  }
+
+  // ✅ declare BEFORE using
+  const chatId = currentConversation.teamsChatId;
+    if (!chatId) {
+      alert("No Teams chatId linked to this conversation.");
+      return;
+    }
+
+
+  console.log("Using chatId for whiteboard:", chatId);
+  alert("chatId=" + chatId);
+
+  const res = await fetch("/api/whiteboard/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-user-id": userId,
+      Authorization: `Bearer ${graphToken}`,
+    },
+    body: JSON.stringify({
+  chatId: currentConversation.teamsChatId,
+  displayName: `Whiteboard - ${currentConversation.name || "Session"}`,
+}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.error("Start whiteboard error:", data);
+    alert(data?.error || "Failed to start Whiteboard");
+    return;
+  }
+
+  alert("Whiteboard tab added.");
+}
+
+
+
   async function loadMessages(conversationId) {
     if (!conversationId) return;
 
@@ -85,9 +130,10 @@ export default function Messages() {
         Authorization: `Bearer ${graphToken}`,
       },
       body: JSON.stringify({
-        conversationId: currentConversation.conversationId,
-        text: messageText,
-      }),
+      conversationId: currentConversation.conversationId, // keep for DB lookup if you want
+      chatId: currentConversation.teamsChatId,
+      text: messageText,
+    }),
     });
 
     const data = await res.json();
@@ -182,10 +228,12 @@ export default function Messages() {
         </div>
 
         <div className="chat">
-          <div className="chat-header">
+          {/* <div className="chat-header">
+            
+
             {currentConversation ? currentConversation.name : "Select a contact"}
 
-            {currentConversation?.teamsEligible && (
+            {currentConversation && (
               <label style={{ marginLeft: 12, fontSize: 12 }}>
                 <input
                   type="checkbox"
@@ -195,7 +243,7 @@ export default function Messages() {
                 {" "}Send via Teams
               </label>
             )}
-          </div>
+          </div> */}
 
 
           <div className="messages">
@@ -230,6 +278,27 @@ export default function Messages() {
             <button onClick={sendMessage} disabled={!currentConversation}>
               Send
             </button>
+            {currentConversation?.teamsEligible && (
+              <>
+                <label style={{ marginLeft: 12, fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={useTeams}
+                    onChange={(e) => setUseTeams(e.target.checked)}
+                  />
+                  {" "}Send via Teams
+                </label>
+
+                <button
+                  style={{ marginLeft: 12 }}
+                  onClick={startWhiteboard}
+                  disabled={!currentConversation}
+                >
+                  Start Whiteboard
+                </button>
+              </>
+            )}
+
           </div>
         </div>
       </div>

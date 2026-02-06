@@ -171,7 +171,6 @@ export default function CourseOffering() {
         mode: a.mode,
         location: trimStr(a.location),
       })),
-      educatorId,
       createdAt: new Date().toISOString(),
     };
 
