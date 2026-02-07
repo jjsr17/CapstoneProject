@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
+import { GRAPHQL_URL } from "../../lib/api";
 
 const API_WEB = "http://localhost:5000";
 const API_DEVICE = "http://192.168.86.240:5000";
