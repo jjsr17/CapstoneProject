@@ -1,5 +1,7 @@
 ﻿// frontend/src/account.jsx (WEB - Vite/React) — refactored (cleaner hooks, matches EducatorAccount layout/classes)
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMsal } from "@azure/msal-react";
+
 import "./account.css";
 
 import FullCalendar from "@fullcalendar/react";
@@ -13,6 +15,7 @@ export default function Account() {
   const [events, setEvents] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [student, setStudent] = useState(null);
+  const { instance } = useMsal();
 
   const mongoUserId = useMemo(() => localStorage.getItem("mongoUserId"), []);
 
@@ -46,11 +49,30 @@ export default function Account() {
     window.location.href = "/settings";
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("mongoUserId");
-    localStorage.removeItem("accountType");
-    window.location.href = "/login";
-  }, []);
+ const logout = useCallback(async () => {
+  // clear app storage
+  localStorage.removeItem("mongoUserId");
+  localStorage.removeItem("accountType");
+  localStorage.removeItem("tutorId");
+  localStorage.removeItem("profileComplete");
+  localStorage.removeItem("useMsSso");
+  localStorage.removeItem("msAccessToken");
+  localStorage.removeItem("msGraphAccessToken");
+  localStorage.removeItem("userRole");
+
+  // if MSAL has an account, sign out properly
+  const accounts = instance.getAllAccounts();
+  if (accounts.length > 0) {
+    instance.setActiveAccount(null);
+    await instance.logoutRedirect({
+      postLogoutRedirectUri: window.location.origin + "/login",
+    });
+    return; // redirect happens
+  }
+
+  window.location.href = "/login";
+}, [instance]);
+
 
   // Close menu if clicking outside
   useEffect(() => {

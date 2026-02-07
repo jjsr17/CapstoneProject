@@ -1,6 +1,12 @@
 // backend/services/teamsMeetings.js
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 
+// Ensure fetch exists (Node 18+ has global fetch)
+const fetchImpl =
+  global.fetch ||
+  // If Node < 18:
+  require("node-fetch");
+  
 // If your Node is < 18, uncomment these two lines:
 // const fetch = require("node-fetch");
 
@@ -38,8 +44,10 @@ async function createTeamsMeetingEvent({
   endLocal,
   timeZone,
   subject = "Noesis Tutoring Session",
+  bodyHtml = "Tutoring session created from the Noesis web app.",
   attendees = [],
 }) {
+
   if (!organizer) throw new Error("Missing organizer (UPN or AAD user id)");
   if (!timeZone) throw new Error("Missing timeZone");
 
@@ -50,15 +58,13 @@ async function createTeamsMeetingEvent({
     subject,
     body: {
       contentType: "HTML",
-      content: "Tutoring session created from the Noesis web app.",
+      content: bodyHtml,
     },
     start: { dateTime: startLocal, timeZone },
     end: { dateTime: endLocal, timeZone },
     isOnlineMeeting: true,
-    onlineMeetingProvider: "teamsForBusiness",
   };
 
-  // Add attendees if provided (makes it appear for them too)
   if (Array.isArray(attendees) && attendees.length > 0) {
     eventPayload.attendees = attendees.map((email) => ({
       emailAddress: { address: email },
@@ -66,7 +72,7 @@ async function createTeamsMeetingEvent({
     }));
   }
 
-  const res = await fetch(url, {
+  const res = await fetchImpl(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -91,6 +97,7 @@ async function createTeamsMeetingEvent({
   return { eventId: json?.id || null, joinUrl };
 }
 
+
 /**
  * (Optional) Your old method (onlineMeetings) kept for compatibility.
  * This does NOT always show on calendar.
@@ -103,7 +110,7 @@ async function createTeamsMeeting({ subject, startISO, endISO }) {
 
   const url = `${GRAPH_ROOT}/users/${organizerUserId}/onlineMeetings`;
 
-  const res = await fetch(url, {
+  const res = await fetchImpl(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -2,6 +2,8 @@
 console.log("✅ BACKEND server.js loaded");
 
 require("dotenv").config();
+const whiteboardRoutes = require ("./routes/whiteBoard.js");
+
 
 const express = require("express");
 const cors = require("cors");
@@ -38,6 +40,7 @@ const allowedOrigins = [
   "http://127.0.0.1:19006",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  
 ];
 
 const corsOptions = {
@@ -61,7 +64,7 @@ app.use("/api/subjects", subjectRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/messages", messageRoutes);
-
+app.use("/api/whiteboard", whiteboardRoutes);
 
 
 console.log(
@@ -92,6 +95,7 @@ function getMsClaims(authHeader) {
 console.log("✅ GRAPHQL TYPEDEFS LOADING");
 
 const typeDefs = gql`
+
   type EducatorInfo {
     collegeName: String
     degree: String
@@ -119,6 +123,7 @@ const typeDefs = gql`
     student: StudentInfo
     msUpn: String
     msOid: String
+    teamsEnabled: Boolean
     profileComplete: Boolean!
     authProvider: String
   }
@@ -151,9 +156,21 @@ const typeDefs = gql`
     bookingsByStudent(studentId: ID!): [BookingEvent!]!
     bookingsByTutor(tutorId: ID!): [BookingEvent!]!
     userById(id: ID!): User
-    tutorProfileByUserId(userId: ID!): TutorProfile
+       tutorProfileByUserId(userId: ID!): TutorProfile
+  }
+
+  input CompleteProfileInput {
+    accountType: String!
+    firstName: String!
+    lastName: String!
+    phone: String
+  }
+
+  type Mutation {
+    completeProfile(input: CompleteProfileInput!): User!
   }
 `;
+
 
 const resolvers = {
   Query: {
@@ -254,6 +271,38 @@ const resolvers = {
           tutorId: b.tutorId?.toString(),
           iscompleted: !!b.iscompleted,
         }));
+    },
+  },
+  
+Mutation: {
+    completeProfile: async (_, { input }, { authHeader }) => {
+      const claims = getMsClaims(authHeader);
+      if (!claims?.oid) throw new Error("Not authenticated");
+
+      const msOid = String(claims.oid);
+      const email = String(claims.preferred_username || claims.upn || "")
+        .trim()
+        .toLowerCase();
+
+      if (!email) throw new Error("Microsoft token missing email/upn");
+
+      let user = await User.findOne({ msOid });
+      if (!user) user = await User.findOne({ user_email: email });
+      if (!user) user = new User({ user_email: email });
+
+      user.msOid = msOid;
+      user.msUpn = email;
+      user.teamsEnabled = true;
+      user.authProvider = "microsoft";
+
+      user.accountType = input.accountType;
+      user.firstName = input.firstName;
+      user.lastName = input.lastName;
+      user.phone = input.phone || "";
+      user.profileComplete = true;
+
+      await user.save();
+      return user.toObject();
     },
   },
 };

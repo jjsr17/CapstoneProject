@@ -8,6 +8,7 @@ export default function Messages() {
   const [messageText, setMessageText] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [useTeams, setUseTeams] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -43,6 +44,51 @@ export default function Messages() {
     }
   }
 
+  async function startWhiteboard() {
+  if (!currentConversation?.teamsEligible) return;
+
+  const graphToken = localStorage.getItem("msGraphAccessToken");
+  if (!graphToken) {
+    alert("Missing Graph token. Please sign in with Microsoft again.");
+    return;
+  }
+
+  // ✅ declare BEFORE using
+  const chatId = currentConversation.teamsChatId;
+    if (!chatId) {
+      alert("No Teams chatId linked to this conversation.");
+      return;
+    }
+
+
+  console.log("Using chatId for whiteboard:", chatId);
+  alert("chatId=" + chatId);
+
+  const res = await fetch("/api/whiteboard/start", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-user-id": userId,
+      Authorization: `Bearer ${graphToken}`,
+    },
+    body: JSON.stringify({
+  chatId: currentConversation.teamsChatId,
+  displayName: `Whiteboard - ${currentConversation.name || "Session"}`,
+}),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.error("Start whiteboard error:", data);
+    alert(data?.error || "Failed to start Whiteboard");
+    return;
+  }
+
+  alert("Whiteboard tab added.");
+}
+
+
+
   async function loadMessages(conversationId) {
     if (!conversationId) return;
 
@@ -66,32 +112,69 @@ export default function Messages() {
   }
 
   async function sendMessage() {
-    if (!messageText.trim() || !currentConversation) return;
+  if (!messageText.trim() || !currentConversation) return;
 
-    try {
-      const res = await fetch("/api/messages/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": userId,
-        },
-        body: JSON.stringify({
-          conversationId: currentConversation.conversationId,
-          text: messageText,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Send failed");
-
-      setMessageText("");
-      await loadMessages(currentConversation.conversationId);
-      await loadContacts(); // refresh ordering + preview
-    } catch (err) {
-      console.error(err);
-      alert("Failed to send message.");
+  // ✅ Teams path
+  if (useTeams && currentConversation.teamsEligible) {
+    const graphToken = localStorage.getItem("msGraphAccessToken");
+    if (!graphToken) {
+      alert("Missing Graph token. Please sign in with Microsoft again.");
+      return;
     }
+
+    const res = await fetch("/api/messages/send-teams", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+        Authorization: `Bearer ${graphToken}`,
+      },
+      body: JSON.stringify({
+      conversationId: currentConversation.conversationId, // keep for DB lookup if you want
+      chatId: currentConversation.teamsChatId,
+      text: messageText,
+    }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("Teams send error:", data);
+      alert(data?.error || "Teams send failed");
+      return;
+    }
+
+    setMessageText("");
+    await loadMessages(currentConversation.conversationId);
+    await loadContacts();
+    return;
   }
+
+  // ✅ existing in-app path
+  try {
+    const res = await fetch("/api/messages/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({
+        conversationId: currentConversation.conversationId,
+        text: messageText,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Send failed");
+
+    setMessageText("");
+    await loadMessages(currentConversation.conversationId);
+    await loadContacts();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send message.");
+  }
+}
+
 
   useEffect(() => {
     loadContacts();
@@ -145,9 +228,23 @@ export default function Messages() {
         </div>
 
         <div className="chat">
-          <div className="chat-header">
+          {/* <div className="chat-header">
+            
+
             {currentConversation ? currentConversation.name : "Select a contact"}
-          </div>
+
+            {currentConversation && (
+              <label style={{ marginLeft: 12, fontSize: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={useTeams}
+                  onChange={(e) => setUseTeams(e.target.checked)}
+                />
+                {" "}Send via Teams
+              </label>
+            )}
+          </div> */}
+
 
           <div className="messages">
             {!currentConversation ? (
@@ -181,6 +278,27 @@ export default function Messages() {
             <button onClick={sendMessage} disabled={!currentConversation}>
               Send
             </button>
+            {currentConversation?.teamsEligible && (
+              <>
+                <label style={{ marginLeft: 12, fontSize: 12 }}>
+                  <input
+                    type="checkbox"
+                    checked={useTeams}
+                    onChange={(e) => setUseTeams(e.target.checked)}
+                  />
+                  {" "}Send via Teams
+                </label>
+
+                <button
+                  style={{ marginLeft: 12 }}
+                  onClick={startWhiteboard}
+                  disabled={!currentConversation}
+                >
+                  Start Whiteboard
+                </button>
+              </>
+            )}
+
           </div>
         </div>
       </div>
