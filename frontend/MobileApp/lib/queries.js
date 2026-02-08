@@ -1,30 +1,30 @@
 // MobileApp/lib/queries.js
 import { gql } from "@apollo/client";
 
-export const SESSIONS_BY_STUDENT = gql`
-  query SessionsByStudent($studentId: ID!) {
-    sessionsByStudent(studentId: $studentId) {
+export const BOOKINGS_BY_STUDENT = gql`
+  query BookingsByStudent($studentId: ID!) {
+    bookingsByStudent(studentId: $studentId) {
       _id
       title
       start
       end
-      bookingId
-      roomId
-      mode
+      iscompleted
+      studentId
+      tutorId
     }
   }
 `;
 
-export const SESSIONS_BY_TUTOR = gql`
-  query SessionsByTutor($tutorId: ID!) {
-    sessionsByTutor(tutorId: $tutorId) {
+export const BOOKINGS_BY_TUTOR = gql`
+  query BookingsByTutor($tutorId: ID!) {
+    bookingsByTutor(tutorId: $tutorId) {
       _id
       title
       start
       end
-      bookingId
-      roomId
-      mode
+      iscompleted
+      studentId
+      tutorId
     }
   }
 `;
