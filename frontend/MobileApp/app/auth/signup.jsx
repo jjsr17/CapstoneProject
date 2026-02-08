@@ -1,36 +1,199 @@
-// app/auth/signup.jsx
-import React, { useState } from "react";
-import { View, Text, TextInput, Button, Alert, Platform } from "react-native";
+import React, { useMemo, useState } from "react";
 import { router } from "expo-router";
+import {
+  View,
+  Text,
+  TextInput,
+  Alert,
+  Platform,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 
 const API_WEB = "http://localhost:5000";
 const API_DEVICE = "http://192.168.86.240:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
+const SIGNUP_PATH = "/api/users/signup";
+
+function Pill({ label, active, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.pill, active && styles.pillActive]}
+      accessibilityRole="button"
+      hitSlop={8}
+    >
+      <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function SignupScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Account type
+  const [accountType, setAccountType] = useState("student"); // "student" | "educator"
+
+  // Name
   const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  const signup = async () => {
+  // Login
+  const [user_email, setUser_email] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Demographics (optional)
+  const [gender, setGender] = useState(""); // "", "Male", "Female", "Other"
+  const [age, setAge] = useState(""); // keep as string in UI; convert to number
+  const [birthDate, setBirthDate] = useState("");
+
+  // Address (optional)
+  const [address, setAddress] = useState("");
+  const [town, setTown] = useState("");
+  const [stateField, setStateField] = useState("");
+  const [country, setCountry] = useState("");
+
+  // Contact (optional)
+  const [phone, setPhone] = useState("");
+
+  // Student fields (optional)
+  const [student_schoolName, setStudent_schoolName] = useState("");
+  const [student_educationLevel, setStudent_educationLevel] = useState(""); // "", "school", "college"
+  const [student_grade, setStudent_grade] = useState("");
+  const [student_collegeYear, setStudent_collegeYear] = useState("");
+  const [student_concentration, setStudent_concentration] = useState("");
+  const [student_degreeType, setStudent_degreeType] = useState("");
+
+  // Educator fields (optional)
+  const [educator_collegeName, setEducator_collegeName] = useState("");
+  const [educator_degree, setEducator_degree] = useState("");
+  const [educator_concentration, setEducator_concentration] = useState("");
+  const [educator_credentialsFileName, setEducator_credentialsFileName] = useState("");
+
+  const payload = useMemo(() => {
+    // Convert age safely (optional)
+    const ageNum =
+      String(age).trim() === "" ? undefined : Number.isFinite(Number(age)) ? Number(age) : undefined;
+
+    const base = {
+      accountType, // required
+      firstName: firstName.trim(),
+      middleName: middleName.trim() || undefined,
+      lastName: lastName.trim(),
+      gender: gender.trim(), // must be "", "Male", "Female", "Other"
+      age: ageNum, // number or undefined
+      birthDate: birthDate.trim() || undefined,
+
+      address: address.trim() || undefined,
+      town: town.trim() || undefined,
+      stateField: stateField.trim() || undefined,
+      country: country.trim() || undefined,
+
+      phone: phone.trim() || undefined,
+
+      user_email: user_email.trim().toLowerCase(), // required by schema
+      password, // controller should hash -> passwordHash
+    };
+
+    if (accountType === "student") {
+      return {
+        ...base,
+        student: {
+          schoolName: student_schoolName.trim() || undefined,
+          educationLevel: student_educationLevel.trim(), // "", "school", "college"
+          grade: student_grade.trim() || undefined,
+          collegeYear: student_collegeYear.trim() || undefined,
+          concentration: student_concentration.trim() || undefined,
+          degreeType: student_degreeType.trim() || undefined,
+        },
+      };
+    }
+
+    return {
+      ...base,
+      educator: {
+        collegeName: educator_collegeName.trim() || undefined,
+        degree: educator_degree.trim() || undefined,
+        concentration: educator_concentration.trim() || undefined,
+        credentialsFileName: educator_credentialsFileName.trim() || undefined,
+      },
+    };
+  }, [
+    accountType,
+    firstName,
+    middleName,
+    lastName,
+    gender,
+    age,
+    birthDate,
+    address,
+    town,
+    stateField,
+    country,
+    phone,
+    user_email,
+    password,
+    student_schoolName,
+    student_educationLevel,
+    student_grade,
+    student_collegeYear,
+    student_concentration,
+    student_degreeType,
+    educator_collegeName,
+    educator_degree,
+    educator_concentration,
+    educator_credentialsFileName,
+  ]);
+
+  const validate = () => {
+    if (!payload.firstName) return "First Name is required.";
+    if (!payload.lastName) return "Last Name is required.";
+    if (!payload.user_email) return "Email is required.";
+    if (!password) return "Password is required.";
+    if (!["student", "educator"].includes(accountType)) return "Invalid account type.";
+
+    // Backend enum: ["Male","Female","Other",""]
+    if (!["", "Male", "Female", "Other"].includes(gender.trim())) {
+      return 'Gender must be "Male", "Female", "Other", or blank.';
+    }
+
+    // Student enum: ["school","college",""]
+    if (accountType === "student" && !["", "school", "college"].includes(student_educationLevel.trim())) {
+      return 'Education Level must be "school", "college", or blank.';
+    }
+
+    // If age is provided, must be a number >= 0
+    if (String(age).trim() !== "") {
+      const n = Number(age);
+      if (!Number.isFinite(n) || n < 0) return "Age must be a valid number (0+).";
+    }
+
+    return null;
+  };
+
+  const handleSignup = async () => {
+    const err = validate();
+    if (err) {
+      Alert.alert("Fix this", err);
+      return;
+    }
+
+    setLoading(true);
     try {
-      const resp = await fetch(`${API_URL}/api/users/signup`, {
+      const resp = await fetch(`${API_URL}${SIGNUP_PATH}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          firstName,
-          lastName,
-          accountType: "student", // or educator
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
 
       if (!resp.ok) {
-        Alert.alert("Signup failed", data.message || "Error");
+        Alert.alert("Signup failed", data.message || `HTTP ${resp.status}`);
         return;
       }
 
@@ -38,6 +201,8 @@ export default function SignupScreen() {
       router.replace("/auth/login");
     } catch (e) {
       Alert.alert("Network error", String(e));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,7 +241,13 @@ export default function SignupScreen() {
       />
 
       <Text style={styles.section}>Demographics (optional)</Text>
-      <TextInput style={styles.input} placeholder="Gender (Male/Female/Other)" value={gender} onChangeText={setGender} editable={!loading} />
+      <TextInput
+        style={styles.input}
+        placeholder='Gender ("Male" / "Female" / "Other")'
+        value={gender}
+        onChangeText={setGender}
+        editable={!loading}
+      />
       <TextInput style={styles.input} placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" editable={!loading} />
       <TextInput style={styles.input} placeholder="Birth Date (string)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
 
@@ -95,7 +266,7 @@ export default function SignupScreen() {
           <TextInput style={styles.input} placeholder="School Name" value={student_schoolName} onChangeText={setStudent_schoolName} editable={!loading} />
           <TextInput
             style={styles.input}
-            placeholder="Education Level (school/college)"
+            placeholder='Education Level ("school" / "college")'
             value={student_educationLevel}
             onChangeText={setStudent_educationLevel}
             editable={!loading}
@@ -113,7 +284,7 @@ export default function SignupScreen() {
           <TextInput style={styles.input} placeholder="Concentration" value={educator_concentration} onChangeText={setEducator_concentration} editable={!loading} />
           <TextInput
             style={styles.input}
-            placeholder="Credentials File Name (optional)"
+            placeholder="Credentials File Name"
             value={educator_credentialsFileName}
             onChangeText={setEducator_credentialsFileName}
             editable={!loading}
@@ -129,13 +300,7 @@ export default function SignupScreen() {
           <Text style={{ marginLeft: 10 }}>Creating account…</Text>
         </View>
       ) : (
-        <Pressable
-          style={styles.primaryBtn}
-          onPress={handleSignup}
-          disabled={loading}
-          accessibilityRole="button"
-          hitSlop={10}
-        >
+        <Pressable style={styles.primaryBtn} onPress={handleSignup} accessibilityRole="button" hitSlop={10}>
           <Text style={styles.primaryBtnText}>CREATE ACCOUNT</Text>
         </Pressable>
       )}

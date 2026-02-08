@@ -1,89 +1,223 @@
-import React, { useState } from "react";
+// src/LoginMenu.jsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { loginRequest } from "./authConfig";
+import { InteractionRequiredAuthError } from "@azure/msal-browser";
 import { useNavigate } from "react-router-dom";
+import { loginRequest, graphRequest } from "./authConfig";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
-//const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+// LocalStorage keys (keep consistent across app)
+const LS = {
+  useMsSso: "useMsSso",
+  msAccessToken: "msAccessToken",
+  msGraphAccessToken: "msGraphAccessToken",
+  mongoUserId: "mongoUserId",
+  tutorId: "tutorId",
+  accountType: "accountType",
+  profileComplete: "profileComplete",
+};
+
+// Centralized “auth mode” switch
+function setAuthMode(mode) {
+  if (mode === "ms") {
+    localStorage.setItem(LS.useMsSso, "true");
+  } else {
+    localStorage.setItem(LS.useMsSso, "false");
+    localStorage.removeItem(LS.msAccessToken);
+    localStorage.removeItem(LS.msGraphAccessToken);
+  }
+}
+
+async function fetchMe({ apiBase, accessToken }) {
+  const resp = await fetch(apiBase ? `${apiBase}/graphql` : "/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      query: `query Me { me { _id accountType profileComplete user_email firstName lastName } }`,
+    }),
+  });
+
+  const json = await resp.json();
+  return { json, me: json?.data?.me || null };
+}
 
 export default function LoginMenu() {
   const navigate = useNavigate();
-  const { instance } = useMsal();
+  const { instance, accounts, inProgress } = useMsal();
+
+  const didMsFinish = useRef(false);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const togglePassword = () => setShowPw((v) => !v);
+  const activeAccount = useMemo(() => {
+    return instance.getActiveAccount() || accounts?.[0] || null;
+  }, [instance, accounts]);
 
-  async function fetchMsLogin(idToken) {
-    const resp = await fetch(`${API_BASE}/auth/ms-login`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
+  /**
+   * Finish MS redirect flow (runs after redirect returns)
+   * - acquire API token
+   * - acquire Graph token (Teams) if possible (or trigger consent redirect)
+   * - call GraphQL me
+   * - route user accordingly
+   */
+  useEffect(() => {
+    if (didMsFinish.current) return; // prevents StrictMode double-run
+    if (inProgress !== "none") return; // wait until MSAL is idle
+    if (!activeAccount) return; // no MS account signed in
 
-    const raw = await resp.text();
-    let data = null;
+    didMsFinish.current = true;
+
+    (async () => {
+      setBusy(true);
+      try {
+        instance.setActiveAccount(activeAccount);
+
+        // 1) Acquire API token (for your backend)
+        const apiTokenResp = await instance.acquireTokenSilent({
+          ...loginRequest,
+          account: activeAccount,
+        });
+
+        localStorage.setItem(LS.msAccessToken, apiTokenResp.accessToken);
+        localStorage.setItem(LS.useMsSso, "true");
+
+        // 2) Acquire Graph token (for Teams) - best-effort
+        try {
+          const graphTokenResp = await instance.acquireTokenSilent({
+            ...graphRequest,
+            account: activeAccount,
+          });
+          localStorage.setItem(LS.msGraphAccessToken, graphTokenResp.accessToken);
+        } catch (e) {
+          // If Graph consent is needed, trigger redirect consent ONCE
+          if (e instanceof InteractionRequiredAuthError) {
+            // NOTE: this will redirect away; code after this won't run in this pass
+            await instance.acquireTokenRedirect({
+              ...graphRequest,
+              account: activeAccount,
+              prompt: "consent",
+            });
+            return;
+          }
+          console.warn("Graph token not acquired:", e);
+        }
+
+        // 3) Call GraphQL me
+        const { json, me } = await fetchMe({
+          apiBase: API_BASE,
+          accessToken: apiTokenResp.accessToken,
+        });
+
+        console.log("GraphQL raw response:", json);
+
+        if (me?._id) {
+          localStorage.setItem(LS.mongoUserId, me._id);
+          localStorage.setItem(LS.tutorId, me._id);
+          if (me.accountType) localStorage.setItem(LS.accountType, me.accountType);
+          localStorage.setItem(LS.profileComplete, String(!!me.profileComplete));
+
+          navigate(me.profileComplete ? "/mainmenu" : "/signup", { replace: true });
+        } else {
+          // no user in DB yet -> signup
+          navigate("/signup", { replace: true });
+        }
+      } catch (e) {
+        console.error("MS login finish failed:", e);
+        // allow retry if something truly failed
+        didMsFinish.current = false;
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }, [inProgress, activeAccount, instance, navigate]);
+
+  // If no MS token, default to local
+  useEffect(() => {
+    if (!localStorage.getItem(LS.msAccessToken)) {
+      setAuthMode("local");
+    }
+  }, []);
+
+  const goSignup = useCallback(() => {
+    setAuthMode("local");
+    navigate("/signup");
+  }, [navigate]);
+
+  const loginWithMicrosoft = useCallback(async () => {
+    setBusy(true);
     try {
-      const result = await instance.loginPopup(loginRequest);
-      console.log("Signed in:", result.account);
-      navigate("/mainmenu"); // ✅ router navigation
+      setAuthMode("ms");
+
+      // redirect login (no popup)
+      await instance.loginRedirect({
+        ...loginRequest,
+        prompt: "select_account",
+      });
+
+      // redirect happens; code below will not run
     } catch (e) {
       console.error(e);
+      setAuthMode("local");
       alert(e?.message || "Microsoft sign-in failed.");
-    } finally {
       setBusy(false);
     }
-  };
+  }, [instance]);
 
-  const login = async (e) => {
-  e.preventDefault();
+  const loginLocal = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setAuthMode("local");
 
-  if (!username.trim()) return alert("Enter your username or email.");
-  if (!password) return alert("Enter your password.");
+      if (!username.trim()) return alert("Enter your username or email.");
+      if (!password) return alert("Enter your password.");
 
-  try {
-    const resp = await fetch(`${API_BASE}/api/users/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: username.trim(), password }),
-    });
+      setBusy(true);
+      try {
+        const resp = await fetch(`${API_BASE}/api/users/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim(), password }),
+        });
 
-    const raw = await resp.text();
-    let data = null;
-    try { data = raw ? JSON.parse(raw) : null; } catch {}
+        const raw = await resp.text();
+        let data = null;
+        try {
+          data = raw ? JSON.parse(raw) : null;
+        } catch {}
 
-    if (!resp.ok) {
-      alert(data?.message || raw || "Login failed");
-      return;
-    }
+        if (!resp.ok) {
+          alert(data?.message || raw || "Login failed");
+          return;
+        }
 
-    const user = data?.user;
-    if (!user?._id) {
-      alert("Login succeeded but user id missing.");
-      return;
-    }
+        const user = data?.user;
+        if (!user?._id) {
+          alert("Login succeeded but user id missing.");
+          return;
+        }
 
-    localStorage.setItem("mongoUserId", user._id);
-    if (user.accountType) localStorage.setItem("accountType", user.accountType);
-    localStorage.setItem("tutorId", user._id);
+        localStorage.setItem(LS.mongoUserId, user._id);
+        localStorage.setItem(LS.tutorId, user._id);
+        if (user.accountType) localStorage.setItem(LS.accountType, user.accountType);
+        localStorage.setItem(LS.profileComplete, "true");
 
-    if (user.accountType === "educator") navigate("/educatoraccount");
-    else navigate("/account");
-  } catch (err) {
-    console.error(err);
-    alert("Server error");
-  }
-};
-
-    navigate("/mainmenu"); // ✅ router navigation
-  };
-
-  const signup = (e) => {
-    e.preventDefault();
-    navigate("/signup");
-  };
+        navigate("/mainmenu", { replace: true });
+      } catch (err) {
+        console.error(err);
+        alert("Server error");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [username, password, navigate]
+  );
 
   return (
     <>
@@ -162,6 +296,7 @@ export default function LoginMenu() {
           border-radius: 6px;
           border: none;
           transition: 0.2s;
+          opacity: ${busy ? 0.85 : 1};
         }
 
         .btn-login { background-color: blue; color: white; }
@@ -187,7 +322,7 @@ export default function LoginMenu() {
       <div className="login-box">
         <h1>Noesis</h1>
 
-        <form onSubmit={login}>
+        <form onSubmit={loginLocal}>
           <div className="input-group">
             <label htmlFor="username">Username / Email</label>
             <input
@@ -197,6 +332,7 @@ export default function LoginMenu() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              disabled={busy}
             />
           </div>
 
@@ -210,13 +346,15 @@ export default function LoginMenu() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                disabled={busy}
               />
               <button
                 type="button"
                 className="toggle-password"
-                onClick={togglePassword}
+                onClick={() => setShowPw((v) => !v)}
                 aria-label={showPw ? "Hide password" : "Show password"}
                 title={showPw ? "Hide password" : "Show password"}
+                disabled={busy}
               >
                 👁
               </button>
@@ -224,21 +362,16 @@ export default function LoginMenu() {
           </div>
 
           <div className="button-row">
-            <button className="btn btn-signup" type="button" onClick={signup}>
+            <button className="btn btn-signup" type="button" onClick={goSignup} disabled={busy}>
               User Sign Up
             </button>
-            <button className="btn btn-login" type="submit">
-              Log In
+            <button className="btn btn-login" type="submit" disabled={busy}>
+              {busy ? "Logging in..." : "Log In"}
             </button>
           </div>
         </form>
 
-        <button
-          type="button"
-          className="sso-btn"
-          onClick={loginWithMicrosoft}
-          disabled={busy}
-        >
+        <button type="button" className="sso-btn" onClick={loginWithMicrosoft} disabled={busy}>
           {busy ? "Signing in..." : "Sign in with Microsoft"}
         </button>
       </div>
