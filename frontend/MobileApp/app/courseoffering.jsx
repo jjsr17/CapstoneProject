@@ -212,6 +212,11 @@ export default function CourseOfferingScreen() {
       Alert.alert("Success", "Course offering created.", [
         { text: "OK", onPress: () => router.replace("/educatoraccount") },
       ]);
+      if (res.ok) {
+        console.log("✅ Offering created, going home now");
+        router.replace("/home");
+        return;
+      }
     } catch (e) {
       console.error("❌ create offering error:", e);
       Alert.alert("Error", String(e?.message ?? e));

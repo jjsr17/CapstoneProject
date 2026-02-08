@@ -21,36 +21,62 @@ export default function MsLoginScreen() {
   );
 
   const signIn = useCallback(async () => {
-        try {
-        if (!discovery) {
-            Alert.alert("Loading", "Auth discovery still loading. Try again.");
-            return;
-        }
+    try {
+      if (!discovery) {
+        Alert.alert("Loading", "Auth discovery still loading. Try again.");
+        return;
+      }
 
-        const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true,
-    projectNameForProxy: "@jjsr17/mobileApp",
-    });
+      const redirectUri = AuthSession.makeRedirectUri({
+        useProxy: true,
+        projectNameForProxy: "@jjsr17/mobileApp",
+      });
 
-
+      // ✅ Authorization Code + PKCE (correct for Expo)
       const req = new AuthSession.AuthRequest({
         clientId,
-        scopes: ["openid", "profile", "email"],
+        scopes: ["openid", "profile", "email", "User.Read"],
         redirectUri,
-        responseType: AuthSession.ResponseType.IdToken,
-        extraParams: { nonce: "nonce" },
+        responseType: AuthSession.ResponseType.Code,
+        usePKCE: true,
       });
 
       const result = await req.promptAsync(discovery, { useProxy: true });
+
+      // ✅ MUST check success first
       if (result.type !== "success") return;
 
-      const idToken = result.params.id_token;
-      console.log("ID TOKEN:", idToken);
+      const code = result.params?.code;
+      if (!code) {
+        Alert.alert("MS login error", "Missing authorization code.");
+        return;
+      }
 
+      // ✅ Exchange code -> access token
+      const tokenResult = await AuthSession.exchangeCodeAsync(
+        {
+          clientId,
+          code,
+          redirectUri,
+          extraParams: {
+            code_verifier: req.codeVerifier, // required for PKCE
+          },
+        },
+        discovery
+      );
+
+      const accessToken = tokenResult?.accessToken;
+      if (!accessToken) {
+        console.log("tokenResult:", tokenResult);
+        Alert.alert("MS login error", "Failed to obtain access token.");
+        return;
+      }
+
+      // ✅ Call your backend using the access token
       const resp = await fetch(`${apiUrl}/auth/ms-login`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${idToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
       });
@@ -63,17 +89,15 @@ export default function MsLoginScreen() {
       try {
         data = raw ? JSON.parse(raw) : null;
       } catch {
-        data = null;
+        data = { message: raw };
       }
 
       if (!resp.ok) {
-        Alert.alert("ms-login failed", data?.message || raw || `HTTP ${resp.status}`);
+        Alert.alert("ms-login failed", data?.message || data?.error || `HTTP ${resp.status}`);
         return;
       }
 
       const user = data?.user;
-
-      // ✅ HARD FAIL if backend doesn't return what we need
       if (!user?._id || !user?.accountType) {
         Alert.alert(
           "Backend response missing fields",
@@ -82,13 +106,19 @@ export default function MsLoginScreen() {
         return;
       }
 
-      // ✅ store for Account + EducatorAccount GraphQL pages
+      // ✅ Store tokens for signup autofill + GraphQL/me
+      await AsyncStorage.setItem("useMsSso", "true");
+      await AsyncStorage.setItem("msAccessToken", accessToken);
+
+      // ✅ Store user identity like web
       await AsyncStorage.setItem("mongoUserId", String(user._id));
       await AsyncStorage.setItem("accountType", String(user.accountType));
+      await AsyncStorage.setItem("tutorId", String(user._id));
+      await AsyncStorage.setItem("profileComplete", String(!!user.profileComplete));
 
       // ✅ route based on role
       if (user.accountType === "educator") router.replace("/educatoraccount");
-      else router.replace("/account");
+      else router.replace("/home");
     } catch (e) {
       console.error("MS login error:", e);
       Alert.alert("MS login error", String(e?.message ?? e));

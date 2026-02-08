@@ -40,23 +40,28 @@ const allowedOrigins = [
   "http://127.0.0.1:19006",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "http://192.168.86.22:8081",
+  "http://192.168.86.22:19006",
+  "http://192.168.86.22:5173",
+
   
 ];
 
 const corsOptions = {
   origin(origin, callback) {
-    // allow non-browser tools (no Origin header)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("CORS blocked: " + origin));
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-user-id"],
+  exposedHeaders: ["x-user-id"],
   credentials: true,
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
 
 /* ---------------- REST Routes ---------------- */
 app.use("/api/users", userRoutes);
@@ -323,10 +328,11 @@ async function startServer() {
   // We already configured Express CORS, so disable Apollo middleware CORS
   apolloServer.applyMiddleware({ app, path: "/graphql", cors: false });
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`🚀 GraphQL at http://localhost:${PORT}/graphql`);
-  });
+  app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
+  console.log(`🚀 GraphQL at http://0.0.0.0:${PORT}/graphql`);
+});
+
 }
 
 startServer();
