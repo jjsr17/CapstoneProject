@@ -1,4 +1,4 @@
-body {
+﻿body {
     margin: 0;
     font-family: "Times New Roman", serif;
     background-color: #f5f6fa;
@@ -7,13 +7,16 @@ body {
 
 /* PAGE HEADER */
 .page-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+    position: relative;
     padding: 20px 30px 10px;
+    background: lavender;
 }
 
 .back-btn {
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
     padding: 6px 12px;
     font-size: 14px;
     cursor: pointer;
@@ -22,7 +25,10 @@ body {
 .page-title {
     font-size: 24px;
     color: blueviolet;
+    text-align: left;
+    margin-left: 90px;
 }
+
 
 /* MAIN LAYOUT */
 .message-wrapper {
@@ -36,7 +42,7 @@ body {
 /* CONTACT LIST CARD */
 .contacts {
     width: 280px;
-    background: white;
+    background: lavender;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     padding: 20px;
@@ -55,13 +61,13 @@ body {
     cursor: pointer;
     margin-bottom: 10px;
     border: 1px solid transparent;
-    background-color: #f9f9f9;
+    background-color: #c6b4ff;
 }
 
     .contact:hover,
     .contact.active {
-        background-color: #eef1ff;
-        border-color: #c2c8ff;
+        background-color: aliceblue;
+        border-color: mediumpurple;
     }
 
 /* CHAT CARD */
@@ -79,14 +85,14 @@ body {
     padding: 15px 20px;
     border-bottom: 1px solid #ddd;
     font-weight: bold;
-    background-color: #fafafa;
+    background-color: #c6b4ff;
 }
 
 .messages {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background-color: #f5f6fa;
+    background-color: #f6f2ff;
 }
 
 .message {
@@ -98,13 +104,13 @@ body {
 }
 
 .sent {
-    background-color: #dbe4ff;
+    background-color: #bee0ff;
     margin-left: auto;
     text-align: right;
 }
 
 .received {
-    background-color: white;
+    background-color: #c6b4ff;
     border: 1px solid #ddd;
 }
 

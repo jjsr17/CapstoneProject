@@ -1,63 +1,89 @@
-body {
-    margin: 0;
-    font-family: "Times New Roman", serif;
+﻿/* Page base */
+.ep-page {
     background-color: #f4f4f4;
+    min-height: 100vh;
+    font-family: "Times New Roman", serif;
 }
 
-/* Top Bar */
-.top-bar {
+/* Top bar */
+.ep-topbar {
     display: flex;
     align-items: center;
     padding: 12px 20px;
     background-color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    z-index: 10;
     position: relative;
+    z-index: 50;
 }
 
-.back-btn {
+.ep-back {
     margin-right: 15px;
     padding: 6px 12px;
     cursor: pointer;
 }
 
-.site-title {
+.ep-title {
     font-size: 26px;
     color: blueviolet;
     flex-grow: 1;
 }
 
 /* Banner */
-.banner {
+.ep-banner {
     position: relative;
     height: 220px;
     background-color: #d9d9d9;
+    overflow: hidden;
+    z-index: 1;
 }
 
-    .banner input {
-        display: none;
-    }
+.ep-banner-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    pointer-events: none; 
+}
 
-.banner-label {
+.ep-banner-input {
+    display: none;
+}
+
+.ep-banner-label {
     position: absolute;
     right: 20px;
     bottom: 20px;
     background: rgba(0,0,0,0.6);
-    color: white;
+    color: #fff;
     padding: 8px 12px;
     border-radius: 6px;
     cursor: pointer;
+    z-index: 9999; 
+    pointer-events: auto; 
+    user-select: none;
 }
 
-/* Profile Area */
-.profile-area {
+/* Profile area wrapper */
+.ep-profile-wrap {
+    position: relative;
+    z-index: 10;
+}
+
+/* Profile area */
+.ep-profile-area {
     position: relative;
     padding-left: 40px;
     margin-top: -60px;
-    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
 }
 
-.profile-pic {
+/* Avatar */
+.ep-avatar {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -66,13 +92,14 @@ body {
     overflow: hidden;
 }
 
-    .profile-pic img {
+    .ep-avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
-.profile-upload {
+/* Upload profile button */
+.ep-upload {
     margin-top: 8px;
     font-size: 14px;
     background-color: #333;
@@ -81,19 +108,22 @@ body {
     border-radius: 6px;
     cursor: pointer;
     display: inline-block;
+    position: relative;
+    z-index: 20;
 }
 
-    .profile-upload input {
+    .ep-upload input {
         display: none;
     }
 
-/* Form */
-.form-container {
+/* Form container */
+.ep-form {
     padding: 40px;
     max-width: 900px;
 }
 
-.section {
+/* Sections */
+.ep-section {
     background-color: white;
     padding: 20px;
     border-radius: 12px;
@@ -101,47 +131,52 @@ body {
     margin-bottom: 25px;
 }
 
-    .section h2 {
+    .ep-section h2 {
         margin-top: 0;
         border-bottom: 1px solid #ddd;
         padding-bottom: 6px;
     }
 
-.row {
+/* Rows / inputs */
+.ep-row {
     display: flex;
     gap: 20px;
     margin-bottom: 15px;
 }
 
-.input-group {
+.ep-group {
     width: 100%;
 }
 
-    .input-group label {
+    .ep-group label {
         display: block;
         margin-bottom: 5px;
     }
 
-    .input-group input,
-    textarea {
+    .ep-group input,
+    .ep-group textarea {
         width: 100%;
         padding: 10px;
         font-size: 15px;
         border-radius: 6px;
         border: 1px solid #ccc;
+        background: white;
+        color: #000;
+        box-sizing: border-box;
     }
 
-textarea {
-    min-height: 80px;
-}
+    .ep-group textarea {
+        min-height: 80px;
+    }
 
 /* Buttons */
-.button-row {
+.ep-actions {
     display: flex;
     justify-content: space-between;
+    gap: 20px;
 }
 
-.btn {
+.ep-btn {
     width: 48%;
     padding: 12px;
     font-size: 16px;
@@ -150,11 +185,26 @@ textarea {
     cursor: pointer;
 }
 
-.btn-cancel {
+.ep-cancel {
     background-color: #e6e6e6;
 }
 
-.btn-save {
+.ep-save {
     background-color: blue;
     color: white;
+}
+
+.ep-profile-wrap,
+.ep-profile-area,
+.ep-avatar {
+    pointer-events: none;
+}
+
+.ep-upload {
+    pointer-events: auto;
+}
+
+.ep-banner-label {
+    z-index: 999999;
+    pointer-events: auto;
 }

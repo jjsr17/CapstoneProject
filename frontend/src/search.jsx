@@ -9,11 +9,17 @@ export default function Search() {
 
     const navigate = useNavigate();
 
-    async function fetchSubjectCourses(subject) {
+    async function fetchSubjectCourses(subjects) {
         try {
-            const q = encodeURIComponent(subject);
+
+            const list = Array.isArray(subjects) ? subjects : [subjects];
+
+            const subjectParams = list
+                .map(s => `subject=${encodeURIComponent(s)}`)
+                .join("&");
+
             const t = type ? `&type=${encodeURIComponent(type)}` : "";
-            const res = await fetch(`/api/courses?subject=${q}${t}`);
+            const res = await fetch(`/api/courses?${subjectParams}${t}`);
 
             if (!res.ok) throw new Error("Failed to fetch");
             setCourses(await res.json());
@@ -21,6 +27,7 @@ export default function Search() {
             console.error(err);
         }
     }
+
 
     async function searchCourses(value, newType = type) {
         try {
@@ -58,7 +65,7 @@ function formatSlot(slot) {
 }
 
     return (
-        <>
+        <div className = "page-background">
             <header>
                 <button className="back-btn" onClick={goBack}>← Back</button>
                 <h1>Noesis</h1>
@@ -93,12 +100,12 @@ function formatSlot(slot) {
 
             {/* SUBJECT GRID */}
             <div className="subjects">
-                <div className="subject-card" onClick={() => fetchSubjectCourses("Math")}>
+                <div className="subject-card" onClick={() => fetchSubjectCourses("Mathematics")}>
                     <h2>Mathematics</h2>
                     <p>Algebra, Calculus, Geometry</p>
                 </div>
 
-                <div className="subject-card" onClick={() => fetchSubjectCourses("Science")}>
+                <div className="subject-card" onClick={() => fetchSubjectCourses(["Science", "Chemistry", "Physics"])}>
                     <h2>Science</h2>
                     <p>Biology, Chemistry, Physics</p>
                 </div>
@@ -118,7 +125,7 @@ function formatSlot(slot) {
                     <p>Programming, Algorithms</p>
                 </div>
 
-                <div className="subject-card" onClick={() => fetchSubjectCourses("Electrical")}>
+                <div className="subject-card" onClick={() => fetchSubjectCourses("Electrical", "Power", "Electronics")}>
                     <h2>Electrical</h2>
                     <p>Circuits, Power, Electronics</p>
                 </div>
@@ -169,6 +176,6 @@ function formatSlot(slot) {
 
                 )}
             </div>
-        </>
+        </div>
     );
 }
