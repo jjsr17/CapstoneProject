@@ -8,18 +8,12 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
 const ACCOUNT_TYPES = ["student", "educator"];
 const GENDERS = ["Male", "Female", "Other", ""];
 
-function getMsClaims(authHeader) {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const token = authHeader.slice("Bearer ".length);
-  return jwt.decode(token) || null; // TEMP decode for wiring; verify later
-}
 function pickString(v, fallback = "") {
   return typeof v === "string" ? v.trim() : fallback;
 }
@@ -35,7 +29,7 @@ function normalizeEmail(p) {
   return raw ? raw.toLowerCase() : "";
 }
 
-function validateSignupPayload(p, { isMicrosoftFlow } = {}) {
+function validateSignupPayload(p) {
   if (!p || typeof p !== "object") return "Missing request body";
 
   const accountType = pickString(p.accountType);
@@ -48,20 +42,19 @@ function validateSignupPayload(p, { isMicrosoftFlow } = {}) {
   const email = normalizeEmail(p);
   if (!email) return "Email is required";
 
-  // ✅ Only require password for LOCAL flow
-  if (!isMicrosoftFlow) {
-    const password = p.password;
-    if (!password || typeof password !== "string") return "password is required";
-    if (password.length < 6) return "password must be at least 6 characters";
-  }
+  const password = p.password;
+  if (!password || typeof password !== "string") return "password is required";
+  if (password.length < 6) return "password must be at least 6 characters";
 
   const gender = p.gender ?? "";
   if (!GENDERS.includes(gender)) return "gender must be 'Male', 'Female', 'Other', or ''";
 
+  // Optional: enforce nested object based on account type
+  // if (accountType === "student" && !p.student) return "student object is required for student accountType";
+  // if (accountType === "educator" && !p.educator) return "educator object is required for educator accountType";
+
   return null;
 }
-
-
 
 function buildUserDoc(p) {
   const accountType = pickString(p.accountType);
@@ -131,81 +124,23 @@ router.get("/", async (req, res) => {
 router.post("/signup", async (req, res) => {
   try {
     const p = req.body;
-    const authHeader = req.headers.authorization || "";
-    const claims = getMsClaims(authHeader);
-
-    const msOid = claims?.oid || null;
-    const msUpn =
-      claims?.preferred_username ||
-      claims?.upn ||
-      claims?.unique_name ||
-      null;
-
-    const isMicrosoftFlow = !!msOid;
-
 
     // 1) Validate
-    const validationError = validateSignupPayload(p, { isMicrosoftFlow });
+    const validationError = validateSignupPayload(p);
     if (validationError) return res.status(400).json({ message: validationError });
 
     const email = normalizeEmail(p);
 
-    const userDoc = buildUserDoc(p);
-
-    // ✅ If Microsoft flow, link msOid + mark complete
-    if (isMicrosoftFlow) {
-
-      userDoc.authProvider = "microsoft";
-      userDoc.msOid = msOid;
-      userDoc.profileComplete = true;
-
-     const msUpn =
-        pickString(claims?.preferred_username) ||
-        pickString(claims?.upn) ||
-        pickString(claims?.unique_name) ||
-        email; // fallback
-
-      userDoc.msUpn = msUpn;
-      userDoc.timeZone = userDoc.timeZone || "America/Puerto_Rico";
-
-      // ✅ allow tutors/educators to host Teams meetings
-      userDoc.teamsEnabled = userDoc.accountType === "educator";
-
-      // optional: you can ignore password for microsoft users
-      // but if you want to keep it, hash it:
-      if (p.password) {
-        userDoc.passwordHash = await bcrypt.hash(p.password, 12);
-      }
-
-      // ✅ Upsert by msOid, and also allow linking existing email user
-      let saved = await User.findOneAndUpdate(
-        { $or: [{ msOid }, { user_email: email }] },
-        { $set: userDoc },
-        { new: true, upsert: true }
-      );
-
-      return res.status(201).json({
-        message: "SSO profile completed",
-        user: {
-          id: saved._id,
-          accountType: saved.accountType,
-          firstName: saved.firstName,
-          lastName: saved.lastName,
-          user_email: saved.user_email,
-        },
-      });
-    }
-
-    // ✅ Local signup (unchanged behavior)
+    // 2) Duplicate check
     const exists = await User.findOne({ user_email: email }).select("_id").lean();
     if (exists) return res.status(409).json({ message: "Email already exists" });
 
-    userDoc.authProvider = "local";
-    userDoc.profileComplete = true; // ✅ local signup is complete
+    // 3) Build doc + hash password
+    const userDoc = buildUserDoc(p);
     userDoc.passwordHash = await bcrypt.hash(p.password, 12);
 
+    // 4) Save
     const saved = await User.create(userDoc);
-
 
     // 5) Return minimal safe payload
     return res.status(201).json({
@@ -258,16 +193,6 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
-// GET /api/users/:id -> fetch one user by Mongo _id
-router.get("/:id", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select("-passwordHash").lean();
-    if (!user) return res.status(404).json({ message: "User not found" });
-    return res.json(user);
-  } catch (err) {
-    return res.status(400).json({ message: "Invalid user id", error: err.message });
   }
 });
 

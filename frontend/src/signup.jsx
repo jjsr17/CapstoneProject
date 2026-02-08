@@ -1,59 +1,6 @@
-// src/signup.jsx (or SignUpMenu.jsx)
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { gql } from "@apollo/client";
-import { useQuery, useMutation } from "@apollo/client/react";
-
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-
-const COMPLETE_PROFILE = gql`
-  mutation CompleteProfile($input: CompleteProfileInput!) {
-    completeProfile(input: $input) {
-      _id
-      accountType
-      profileComplete
-      user_email
-      firstName
-      lastName
-      authProvider
-      msOid
-      msUpn
-      teamsEnabled
-    }
-  }
-`;
-
-// LocalStorage keys
-const LS = {
-  useMsSso: "useMsSso",
-  msAccessToken: "msAccessToken",
-  mongoUserId: "mongoUserId",
-  accountType: "accountType",
-  tutorId: "tutorId",
-  profileComplete: "profileComplete",
-};
-
-const ME = gql`
-  query Me {
-    me {
-      firstName
-      lastName
-      user_email
-    }
-  }
-`;
-
+import React, { useMemo, useRef, useState } from "react";
 
 export default function SignUpMenu() {
-  // read once per page load
-  const useMs = useMemo(() => localStorage.getItem(LS.useMsSso) === "true", []);
-  const msToken = useMemo(() => localStorage.getItem(LS.msAccessToken) || "", []);
-  const [completeProfileMutation] = useMutation(COMPLETE_PROFILE);
-  const isMsMode = useMs === true;
-  const hasMsToken = !!msToken;
-
-  // If someone lands in "ms mode" but token is missing, treat as local
-  const isLocalMode = !isMsMode || !hasMsToken;
-
   // Names
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -85,13 +32,13 @@ export default function SignUpMenu() {
   const [educatorCollegeName, setEducatorCollegeName] = useState("");
   const [educatorDegree, setEducatorDegree] = useState("Bachelor");
   const [educatorConcentration, setEducatorConcentration] = useState("");
-  const [credentialFile, setCredentialFile] = useState(null);
+  const [credentialFile, setCredentialFile] = useState(null); // File | null
 
   // Contact
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // Passwords (LOCAL only)
+  // Passwords
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -100,32 +47,8 @@ export default function SignUpMenu() {
   // Drop zone
   const fileInputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+
   const fileName = useMemo(() => credentialFile?.name ?? "", [credentialFile]);
-
-  // Only query ME if MS mode AND token exists
-  const shouldAutofillFromMe = isMsMode && hasMsToken;
-
-  const { data, loading, error } = useQuery(ME, {
-    fetchPolicy: "network-only",
-    skip: !shouldAutofillFromMe,
-  });
-
-  useEffect(() => {
-    if (!shouldAutofillFromMe) return;
-    if (loading) return;
-
-    if (error) {
-      console.error("Signup ME query error:", error);
-      return;
-    }
-
-    const me = data?.me;
-    if (!me) return;
-
-    setFirstName((v) => v || me.firstName || "");
-    setLastName((v) => v || me.lastName || "");
-    setEmail((v) => v || me.user_email || "");
-  }, [shouldAutofillFromMe, loading, error, data]);
 
   const handleFile = (file) => {
     if (!file || file.type !== "application/pdf") {
@@ -144,141 +67,72 @@ export default function SignUpMenu() {
 
   const goBack = () => {
     window.location.href = "/login";
+
   };
 
-  const createAccount = async (e) => {
-    e.preventDefault();
+ const createAccount = async (e) => {
+  e.preventDefault();
 
-    if (!accountType) return alert("Please select an account type.");
-    if (!email.trim()) return alert("Please enter an email address.");
+  if (!accountType) {
+    alert("Please select an account type.");
+    return;
+  }
 
-    // ✅ Only require password for LOCAL mode
-    if (isLocalMode) {
-      if (!password) return alert("Please enter a password.");
-      if (password !== confirmPassword) return alert("Passwords do not match.");
-    }
+  if (password !== confirmPassword) {
+    alert("Passwords do not match.");
+    return;
+  }
 
-    const payload = {
-      firstName,
-      middleName,
-      lastName,
-      gender,
-      age,
-      birthDate,
-      address,
-      town,
-      stateField,
-      country,
-      phone,
+  const payload = {
+    firstName,
+    middleName,
+    lastName,
+    gender,
+    age,
+    birthDate,
+    address,
+    town,
+    stateField,
+    country,
+    phone,
+    email,
+    accountType,
+    password,
+    // student
+    schoolName,
+    educationLevel,
+    grade,
+    collegeYear,
+    studentConcentration,
+    degreeType,
 
-      user_email: email.trim(),
-      accountType,
+    // educator
+    educatorCollegeName,
+    educatorDegree,
+    educatorConcentration,
+  };
 
-      // ✅ Only send password for local signups
-      password: isLocalMode ? password : undefined,
+  try {
+    const res = await fetch("http://localhost:5000/api/users/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      student:
-        accountType === "student"
-          ? {
-              schoolName,
-              educationLevel,
-              grade,
-              collegeYear,
-              concentration: studentConcentration,
-              degreeType,
-            }
-          : undefined,
-
-      educator:
-        accountType === "educator"
-          ? {
-              collegeName: educatorCollegeName,
-              degree: educatorDegree,
-              concentration: educatorConcentration,
-              credentialsFileName: credentialFile?.name || "",
-            }
-          : undefined,
-    };
-
-    try {
-      const url = API_BASE ? `${API_BASE}/api/users/signup` : "/api/users/signup";
-
-      const headers = { "Content-Type": "application/json" };
-
-      // ✅ Only attach auth header when MS token exists
-      if (isMsMode && hasMsToken) headers.Authorization = `Bearer ${msToken}`;
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-      
-      if (isMsMode && hasMsToken) {
-      const resp = await completeProfileMutation({
-        variables: {
-          input: {
-            accountType,
-            firstName,
-            lastName,
-            phone,
-          },
-        },
-        context: {
-          headers: {
-            Authorization: `Bearer ${msToken}`,
-          },
-        },
-      });
-
-      const user = resp?.data?.completeProfile;
-      if (!user?._id) {
-        alert("Microsoft profile completion failed.");
-        return;
-      }
-
-      localStorage.setItem(LS.mongoUserId, user._id);
-      localStorage.setItem(LS.tutorId, user._id);
-      localStorage.setItem(LS.accountType, user.accountType || accountType);
-      localStorage.setItem(LS.profileComplete, String(!!user.profileComplete));
-
-      window.location.href = user.accountType === "educator" ? "/educatoraccount" : "/mainmenu";
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.message || "Signup failed");
       return;
     }
 
-      const raw = await res.text();
-      let respData = null;
-      try {
-        respData = raw ? JSON.parse(raw) : null;
-      } catch {
-        respData = null;
-      }
+    // success
+    window.location.href = "/home";
+  } catch (err) {
+    console.error(err);
+    alert("Server error");
+  }
+};
 
-      if (!res.ok) {
-        alert(respData?.message || raw || "Signup failed");
-        return;
-      }
-
-      // Your backend currently returns { ok, userId }
-      const userId = respData?.userId;
-      if (userId) {
-        localStorage.setItem(LS.mongoUserId, userId);
-        localStorage.setItem(LS.tutorId, userId);
-      }
-
-      // store accountType from form selection
-      localStorage.setItem(LS.accountType, accountType);
-
-      if (accountType.trim().toLowerCase() === "educator") {
-        window.location.href = "/educatoraccount";
-      } else {
-        window.location.href = "/mainmenu";
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Server error");
-    }
-  };
 
   return (
     <>
@@ -292,6 +146,7 @@ export default function SignUpMenu() {
           align-items: center;
           min-height: 100vh;
         }
+
         .signup-box {
           background-color: white;
           width: 640px;
@@ -299,23 +154,37 @@ export default function SignUpMenu() {
           border-radius: 14px;
           box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
+
         .signup-box h1 {
           text-align: center;
           color: blueviolet;
           font-size: 42px;
           margin-bottom: 25px;
         }
+
         .row { display: flex; gap: 20px; }
         .row.names { gap: 25px; }
+
         .row.demographics {
           justify-content: center;
           align-items: flex-end;
           flex-wrap: nowrap;
           gap: 25px;
         }
+
         .row.region { gap: 25px; }
-        .input-group { margin-bottom: 15px; width: 100%; }
-        .input-group label { display: block; font-size: 15px; margin-bottom: 5px; }
+
+        .input-group {
+          margin-bottom: 15px;
+          width: 100%;
+        }
+
+        .input-group label {
+          display: block;
+          font-size: 15px;
+          margin-bottom: 5px;
+        }
+
         .input-group input,
         .input-group select {
           width: 100%;
@@ -325,10 +194,13 @@ export default function SignUpMenu() {
           border: 1px solid #ccc;
           box-sizing: border-box;
         }
+
         .input-small { max-width: 110px; }
         .input-xsmall { max-width: 40px; }
         .input-medium { max-width: 100px; }
+
         .password-wrapper { position: relative; }
+
         .toggle-password {
           position: absolute;
           right: 10px;
@@ -338,12 +210,15 @@ export default function SignUpMenu() {
           cursor: pointer;
           padding: 2px 4px;
         }
+
         .hidden { display: none; }
+
         .button-row {
           display: flex;
           justify-content: space-between;
           margin-top: 20px;
         }
+
         .btn {
           width: 48%;
           padding: 12px;
@@ -352,8 +227,10 @@ export default function SignUpMenu() {
           cursor: pointer;
           border: none;
         }
+
         .btn-back { background-color: #e6e6e6; }
         .btn-create { background-color: blue; color: white; }
+
         .drop-zone {
           border: 2px dashed #aaa;
           border-radius: 8px;
@@ -364,10 +241,12 @@ export default function SignUpMenu() {
           transition: 0.2s;
           user-select: none;
         }
+
         .drop-zone.dragover {
           background-color: #f3eaff;
           border-color: blueviolet;
         }
+
         .file-name {
           margin-top: 8px;
           font-size: 14px;
@@ -407,7 +286,7 @@ export default function SignUpMenu() {
               </select>
             </div>
 
-            <div className="input-group input-small">
+            <div className="input-group input-xsmall">
               <label>Age</label>
               <input type="number" value={age} onChange={(e) => setAge(e.target.value)} />
             </div>
@@ -452,7 +331,10 @@ export default function SignUpMenu() {
                 const v = e.target.value;
                 setAccountType(v);
 
-                if (v !== "student") setEducationLevel("");
+                // mimic your HTML behavior: hide other section + reset sub-fields if desired
+                if (v !== "student") {
+                  setEducationLevel("");
+                }
                 if (v !== "educator") {
                   setCredentialFile(null);
                   setDragOver(false);
@@ -465,7 +347,7 @@ export default function SignUpMenu() {
             </select>
           </div>
 
-          {/* Student */}
+          {/* Student Section */}
           <div className={accountType === "student" ? "" : "hidden"}>
             <div className="input-group">
               <label>School Name</label>
@@ -474,13 +356,17 @@ export default function SignUpMenu() {
 
             <div className="input-group">
               <label>Education Level</label>
-              <select value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)}>
+              <select
+                value={educationLevel}
+                onChange={(e) => setEducationLevel(e.target.value)}
+              >
                 <option value="">Select</option>
                 <option value="school">School</option>
                 <option value="college">College</option>
               </select>
             </div>
 
+            {/* School Fields */}
             <div className={educationLevel === "school" ? "" : "hidden"}>
               <div className="input-group">
                 <label>Grade</label>
@@ -488,6 +374,7 @@ export default function SignUpMenu() {
               </div>
             </div>
 
+            {/* College Fields */}
             <div className={educationLevel === "college" ? "" : "hidden"}>
               <div className="input-group">
                 <label>College Year</label>
@@ -513,7 +400,7 @@ export default function SignUpMenu() {
             </div>
           </div>
 
-          {/* Educator */}
+          {/* Educator Section */}
           <div className={accountType === "educator" ? "" : "hidden"}>
             <div className="input-group">
               <label>College Name</label>
@@ -542,6 +429,7 @@ export default function SignUpMenu() {
 
             <div className="input-group">
               <label>Credentials (PDF only)</label>
+
               <div
                 className={`drop-zone ${dragOver ? "dragover" : ""}`}
                 onClick={() => fileInputRef.current?.click()}
@@ -558,6 +446,7 @@ export default function SignUpMenu() {
                 }}
               >
                 Drag & drop PDF here or click to upload
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -565,6 +454,7 @@ export default function SignUpMenu() {
                   hidden
                   onChange={(e) => handleFile(e.target.files?.[0])}
                 />
+
                 <div className="file-name">{fileName}</div>
               </div>
             </div>
@@ -578,52 +468,49 @@ export default function SignUpMenu() {
 
           <div className="input-group">
             <label>Email Address</label>
-            <input
-              value={email}
-              readOnly={!isLocalMode} // ✅ only readOnly when true MS mode
-              style={!isLocalMode ? { backgroundColor: "#f2f2f2" } : undefined}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
 
-          {/* ✅ Passwords shown ONLY in local mode */}
-          <div className={isLocalMode ? "" : "hidden"}>
-            <div className="input-group">
-              <label>Password</label>
-              <div className="password-wrapper">
-                <input
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  id="password"
-                />
-                <button
-                  type="button"
-                  className="toggle-password"
-                  onClick={() => setShowPw((v) => !v)}
-                >
-                  👁
-                </button>
-              </div>
+          {/* Password */}
+          <div className="input-group">
+            <label>Password</label>
+            <div className="password-wrapper">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                id="password"
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? "Hide password" : "Show password"}
+                title={showPw ? "Hide password" : "Show password"}
+              >
+                👁
+              </button>
             </div>
+          </div>
 
-            <div className="input-group">
-              <label>Confirm Password</label>
-              <div className="password-wrapper">
-                <input
-                  type={showConfirmPw ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  id="confirmPassword"
-                />
-                <button
-                  type="button"
-                  className="toggle-password"
-                  onClick={() => setShowConfirmPw((v) => !v)}
-                >
-                  👁
-                </button>
-              </div>
+          <div className="input-group">
+            <label>Confirm Password</label>
+            <div className="password-wrapper">
+              <input
+                type={showConfirmPw ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                id="confirmPassword"
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowConfirmPw((v) => !v)}
+                aria-label={showConfirmPw ? "Hide confirm password" : "Show confirm password"}
+                title={showConfirmPw ? "Hide confirm password" : "Show confirm password"}
+              >
+                👁
+              </button>
             </div>
           </div>
 

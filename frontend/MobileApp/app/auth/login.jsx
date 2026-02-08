@@ -38,22 +38,21 @@ export default function LoginScreen() {
   const discovery = AuthSession.useAutoDiscovery(
     `https://login.microsoftonline.com/${tenantId}/v2.0`
   );
-const loginWithMicrosoft = useCallback(async () => {
-  try {
-    if (!discovery) {
-      Alert.alert("Loading", "Auth discovery is still loading. Try again.");
-      return;
-    }
 
-    const projectNameForProxy = "@jjsr17/MobileApp";
+  const loginWithMicrosoft = useCallback(async () => {
+    try {
+      if (!discovery) {
+        Alert.alert("Loading", "Auth discovery is still loading. Try again.");
+        return;
+      }
 
-    const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: Platform.OS !== "web",
-      projectNameForProxy,
-    });
-
-    
-
+      // Expo proxy works great in dev (web + device)
+      const redirectUri = AuthSession.makeRedirectUri({
+  useProxy: true,
+  // IMPORTANT: put your real Expo account + app slug here
+  // example: "@jonathansewell/mobileapp"
+  projectNameForProxy: "@YOUR_EXPO_USERNAME/YOUR_APP_SLUG",
+});
 
 const req = new AuthSession.AuthRequest({
   clientId,
@@ -63,79 +62,45 @@ const req = new AuthSession.AuthRequest({
   extraParams: { nonce: "nonce" },
 });
 
-const result = await req.promptAsync(discovery, {
-  useProxy: Platform.OS !== "web",
-});
 
 
-console.log("AUTH RESULT:", result);
+      const authRequest = new AuthSession.AuthRequest({
+        clientId,
+        scopes: ["openid", "profile", "email"],
+        redirectUri,
+        responseType: AuthSession.ResponseType.IdToken,
+        extraParams: { nonce: "nonce" },
+      });
 
-    const idToken = result.params?.id_token;
-    if (!idToken) {
-      Alert.alert("Error", "No id_token returned.");
-      return;
-    }
+const result = await req.promptAsync(discovery, { useProxy: true });
+      if (result.type !== "success") return;
 
-    console.log("ID TOKEN:", idToken.slice(0, 25) + "…");
+      const idToken = result.params?.id_token;
 
-    const resp = await fetch(`${API_URL}/auth/ms-login`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${idToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+      console.log("ID TOKEN:", idToken?.slice(0, 25) + "…"); // ✅ safe partial log
 
-    const text = await resp.text();
-    let data = {};
-    try { data = JSON.parse(text); } catch { data = { message: text }; }
+      const resp = await fetch(`${API_URL}/auth/ms-login`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-
-    if (!resp.ok) {
-      Alert.alert("Login failed", data?.message ?? "Server error");
-      return;
-    }
-
+    const data = await resp.json();
     console.log("Logged in user:", data.user);
 
-    // optional: persist ids
-     await saveAuth(data.user);
-
-     router.replace("/home");
-  } catch (err) {
-    console.error(err);
-    Alert.alert("Login error", err?.message ?? "Something went wrong.");
-  }
-}, [discovery]);
-
+    router.push("/details");
+  }, [discovery]);
 
   // Your placeholder user/pass login (kept)
-const handleLogin = async () => {
-  try {
+  const handleLogin = () => {
     if (!username || !password) {
       Alert.alert("Error", "Please enter username and password");
       return;
     }
-
-    const resp = await fetch(`${API_URL}/api/users/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    const data = await resp.json();
-
-    if (!resp.ok) {
-      Alert.alert("Login failed", data?.message ?? "Server error");
-      return;
-    }
-
-    await saveAuth(data.user);          // ✅ THIS is what you were missing
-    router.replace("/postlogin");       // then route
-  } catch (e) {
-    Alert.alert("Login error", String(e?.message ?? e));
-  }
-};
+    router.replace("/home");
+  };
 
   return (
     <View style={styles.container}>

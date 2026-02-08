@@ -1,123 +1,52 @@
 import express from "express";
 import User from "../../models/User.js";
-import { verifyMicrosoftJwt } from "../auth/verifyMicrosoftJwt.js";
 
 const router = express.Router();
 
 router.post("/signup", async (req, res) => {
   try {
-    const data = req.body || {};
-
-    const accountType = String(data.accountType || "").trim().toLowerCase();
-    if (!["student", "educator"].includes(accountType)) {
-      return res.status(400).json({ ok: false, message: "Invalid accountType." });
-    }
-
-    const email = String(data.user_email || "").trim().toLowerCase();
-    if (!email) {
-      return res.status(400).json({ ok: false, message: "Email is required (user_email)." });
-    }
-
-    const firstName = String(data.firstName || "").trim();
-    const lastName = String(data.lastName || "").trim();
-    if (!firstName || !lastName) {
-      return res.status(400).json({ ok: false, message: "First and last name are required." });
-    }
+    const data = req.body;
 
     const user = await User.create({
-      accountType,
-      firstName,
-      middleName: data.middleName || "",
-      lastName,
+      firstName: data.firstName,
+      middleName: data.middleName,
+      lastName: data.lastName,
+      gender: data.gender,
+      age: data.age ? Number(data.age) : undefined,
+      birthDate: data.birthDate,
+      address: data.address,
+      town: data.town,
+      state: data.stateField || data.state,
+      country: data.country,
+      phone: data.phone,
+      email: data.email,
+      accountType: data.accountType,
 
-      gender: data.gender ?? "",
-      age: data.age !== undefined && data.age !== "" ? Number(data.age) : undefined,
-      birthDate: data.birthDate || "",
+      studentProfile: data.accountType === "student"
+        ? {
+            schoolName: data.schoolName,
+            educationLevel: data.educationLevel,
+            grade: data.grade,
+            collegeYear: data.collegeYear,
+            concentration: data.studentConcentration,
+            degreeType: data.degreeType,
+          }
+        : undefined,
 
-      address: data.address || "",
-      town: data.town || "",
-      stateField: data.stateField || data.state || "",
-      country: data.country || "",
-      phone: data.phone || "",
-
-      user_email: email,
-
-      student: accountType === "student" ? data.student : undefined,
-      educator: accountType === "educator" ? data.educator : undefined,
-
-      profileComplete: true,
-      authProvider: data.authProvider || "local",
+      educatorProfile: data.accountType === "educator"
+        ? {
+            collegeName: data.educatorCollegeName,
+            degree: data.educatorDegree,
+            concentration: data.educatorConcentration,
+          }
+        : undefined,
     });
 
-    return res.status(201).json({
-      ok: true,
-      user: {
-        _id: user._id,
-        accountType: user.accountType,
-        profileComplete: user.profileComplete ?? true,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        user_email: user.user_email,
-      },
-    });
+    res.status(201).json({ ok: true, userId: user._id });
   } catch (err) {
-    if (err?.code === 11000) {
-      return res.status(409).json({ ok: false, message: "Email already exists." });
-    }
-    return res.status(500).json({ ok: false, message: err?.message || "Server error" });
-  }
-});
-
-router.post("/ms-login", async (req, res) => {
-  try {
-    const auth = req.headers.authorization || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!token) return res.status(401).json({ ok: false, message: "Missing token" });
-
-    // ✅ Verify token and extract claims
-    const claims = await verifyMicrosoftJwt(token);
-
-    const msOid = claims.oid;
-    const msUpn = claims.preferred_username || claims.upn || "";
-    const email = String((claims.email || msUpn || "")).toLowerCase().trim();
-
-    console.log("✅ MS CLAIMS oid:", msOid, "upn:", msUpn);
-
-    if (!msOid) return res.status(400).json({ ok: false, message: "Token missing oid claim" });
-    if (!email) return res.status(400).json({ ok: false, message: "Token missing email/upn" });
-
-    // Find by msOid first, then email
-    let user = (await User.findOne({ msOid })) || (await User.findOne({ user_email: email }));
-
-    if (!user) {
-      return res.status(404).json({ ok: false, needsSignup: true, email });
-    }
-
-    // ✅ Link microsoft identity onto the existing user
-    user.authProvider = "microsoft";
-    user.msOid = msOid;
-    user.msUpn = msUpn || user.msUpn;
-    user.teamsEnabled = true; // or keep existing if you want
-    user.user_email = user.user_email || email;
-
-    await user.save();
-
-    return res.json({
-      ok: true,
-      user: {
-        _id: user._id,
-        accountType: user.accountType,
-        profileComplete: user.profileComplete,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        user_email: user.user_email,
-        authProvider: user.authProvider,
-        teamsEnabled: user.teamsEnabled,
-      },
-    });
-  } catch (err) {
-    console.error("ms-login error:", err);
-    return res.status(500).json({ ok: false, message: err?.message || "Server error" });
+    // duplicate email
+    if (err.code === 11000) return res.status(409).json({ ok: false, message: "Email already exists." });
+    res.status(500).json({ ok: false, message: err.message });
   }
 });
 

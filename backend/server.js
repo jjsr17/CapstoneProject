@@ -1,332 +1,295 @@
 // backend/server.js
 console.log("✅ BACKEND server.js loaded");
 
-require("dotenv").config();
-const whiteboardRoutes = require ("./routes/whiteBoard.js");
-
-
 const express = require("express");
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const { ApolloServer, gql } = require("apollo-server-express");
 
 const connectDB = require("./config/db");
 
-// REST routes
-const userRoutes = require("./routes/userRoutes");
-const subjectRoutes = require("./routes/subjectRoutes");
-const courseRoutes = require("./routes/courseRoutes");
-const authRoutes = require("./routes/authRoutes");
-const bookingRoutes = require("./routes/bookingRoutes");
-const messageRoutes = require("./routes/messageRoutes");
-
-// Mongoose models
+// Models
 const User = require("./models/User");
+const Session = require("./models/Session");
 const Booking = require("./models/Booking");
-const TutorProfile = require("./models/TutorProfile");
+
+// Routes
+const userRoutes = require("./routes/userRoutes");
+const tutorProfileRoutes = require("./routes/tutorProfileRoutes");
+const subjectRoutes = require("./routes/subjectRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
+const sessionRoutes = require("./routes/sessionRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const locationRoutes = require("./routes/locationRoutes");
+const authRoutes = require("./routes/authRoutes");
+
 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-/* ---------------- Middleware ---------------- */
-app.use(express.json());
-
-const allowedOrigins = [
-  "http://localhost:8081",
-  "http://localhost:19006",
-  "http://127.0.0.1:8081",
-  "http://127.0.0.1:19006",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  
-];
-
-const corsOptions = {
-  origin(origin, callback) {
-    // allow non-browser tools (no Origin header)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("CORS blocked: " + origin));
-  },
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
-/* ---------------- REST Routes ---------------- */
-app.use("/api/users", userRoutes);
-app.use("/api/subjects", subjectRoutes);
-app.use("/api/courses", courseRoutes);
-app.use("/api/bookings", bookingRoutes);
-app.use("/api/messages", messageRoutes);
-app.use("/api/whiteboard", whiteboardRoutes);
-
-
-console.log(
-  "✅ /api/courses routes:",
-  courseRoutes.stack
-    .filter((l) => l.route)
-    .map((l) => Object.keys(l.route.methods)[0].toUpperCase() + " " + l.route.path)
-);
-
+/** ---------------------------------------------------
+ * Middleware
+ * -------------------------------------------------- */
+app.use(express.json({ limit: "2mb" }));
 app.use("/auth", authRoutes);
 
-/* ---------------- DB ---------------- */
+// Helpful debug header
+app.use((req, res, next) => {
+  res.setHeader("X-Inov8r-Backend", "serverjs");
+  next();
+});
+
+// CORS (allow Expo web, Vite, and local dev ports)
+const allowedOrigins = new Set([
+  "http://localhost:5173",  // Vite
+  "http://localhost:8081",  // your older web port
+  "http://localhost:19006", // Expo web default sometimes
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:8081",
+  "http://127.0.0.1:19006",
+]);
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // allow curl/postman (no origin) + same-origin
+      if (!origin) return cb(null, true);
+
+      // allow exact matches
+      if (allowedOrigins.has(origin)) return cb(null, true);
+
+      // allow LAN origins in dev (Expo Go/device webview)
+      // e.g. http://192.168.86.240:19006 or :8081
+      if (/^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d+$/.test(origin)) {
+        return cb(null, true);
+      }
+
+      return cb(new Error(`CORS blocked origin: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false, // set true only if you use cookies
+  })
+);
+
+// Preflight
+app.options("*", cors());
+
+/** ---------------------------------------------------
+ * DB
+ * -------------------------------------------------- */
 connectDB();
 
-/* ---------------- Health ---------------- */
-app.get("/", (req, res) => res.send("API running"));
+/** ---------------------------------------------------
+ * Health
+ * -------------------------------------------------- */
+app.get("/", (req, res) => res.status(200).send("API running..."));
+app.get("/health", (req, res) => res.json({ ok: true }));
 
-/* ---------------- Helpers ---------------- */
-function getMsClaims(authHeader) {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  const token = authHeader.slice("Bearer ".length);
-
-  // TEMP: decode without verifying (fine for wiring; verify later via JWKS)
-  return jwt.decode(token) || null;
+/** ---------------------------------------------------
+ * Microsoft SSO login
+ * -------------------------------------------------- */
+/**
+ * IMPORTANT NOTE:
+ * This decodes the ID token but does NOT verify signature.
+ * For production you should verify using MS JWKS.
+ */
+function decodeJwtPayload(idToken) {
+  const parts = String(idToken).split(".");
+  if (parts.length < 2) return null;
+  const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "===".slice((base64.length + 3) % 4);
+  const json = Buffer.from(padded, "base64").toString("utf8");
+  return JSON.parse(json);
 }
 
-/* ---------------- GraphQL ---------------- */
-console.log("✅ GRAPHQL TYPEDEFS LOADING");
+function splitName(displayName) {
+  const name = String(displayName || "").trim();
+  if (!name) return { firstName: "Microsoft", lastName: "User" };
+  const parts = name.split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "User" };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
 
+app.post("/auth/ms-login", async (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    if (!m) return res.status(401).json({ ok: false, message: "Missing Bearer token" });
+
+    const idToken = m[1];
+    const payload = decodeJwtPayload(idToken);
+    if (!payload) return res.status(400).json({ ok: false, message: "Invalid ID token" });
+
+    // These commonly exist in MS ID tokens
+    const email =
+      payload.preferred_username ||
+      payload.email ||
+      payload.upn ||
+      (Array.isArray(payload.emails) ? payload.emails[0] : null);
+
+    const displayName = payload.name || payload.given_name || "Microsoft User";
+
+    if (!email) {
+      return res.status(400).json({
+        ok: false,
+        message: "Token missing email/preferred_username",
+        tokenKeys: Object.keys(payload),
+      });
+    }
+
+    // Try to find user by your schema field: user_email
+    let user = await User.findOne({ user_email: String(email).toLowerCase().trim() });
+
+    // If not found, create a minimal user (accountType required by your schema)
+    if (!user) {
+      const { firstName, lastName } = splitName(displayName);
+
+      user = await User.create({
+        accountType: "student", // default; you can change later via profile
+        firstName,
+        lastName,
+        user_email: String(email).toLowerCase().trim(),
+        // optional: store tenantId or ms oid if you add it later
+      });
+    }
+
+    return res.json({
+      ok: true,
+      user: {
+        _id: user._id.toString(),
+        accountType: user.accountType,
+        user_email: user.user_email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+  } catch (err) {
+    console.error("❌ ms-login error:", err);
+    return res.status(500).json({ ok: false, message: "ms-login crashed", error: err.message });
+  }
+});
+
+/** ---------------------------------------------------
+ * REST routes
+ * -------------------------------------------------- */
+app.use("/api/users", userRoutes);
+app.use("/api/tutorprofiles", tutorProfileRoutes);
+app.use("/api/subjects", subjectRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/locations", locationRoutes);
+
+/** ---------------------------------------------------
+ * GraphQL
+ * -------------------------------------------------- */
 const typeDefs = gql`
-
-  type EducatorInfo {
-    collegeName: String
-    degree: String
-    concentration: String
-    credentialsFileName: String
-  }
-
-  type StudentInfo {
-    schoolName: String
-    educationLevel: String
-    grade: String
-    collegeYear: String
-    concentration: String
-    degreeType: String
-  }
-
-  type User {
-    _id: ID!
-    firstName: String
-    middleName: String
-    lastName: String
-    user_email: String
-    accountType: String
-    educator: EducatorInfo
-    student: StudentInfo
-    msUpn: String
-    msOid: String
-    teamsEnabled: Boolean
-    profileComplete: Boolean!
-    authProvider: String
-  }
-
-  type TutorProfile {
-    _id: ID!
-    userId: ID!
-    subjects: [Int!]!
-    tutor_rate: String
-    tutor_rating: Float
-  }
-
-  type BookingEvent {
+  type SessionEvent {
     _id: ID!
     title: String!
     start: String!
     end: String!
-    studentId: ID
-    tutorId: ID
-    iscompleted: Boolean
+    bookingId: ID!
+    roomId: String
+    mode: Int
   }
 
   type Query {
     ping: String!
-    schemaCanary: String!
-    debugSchemaVersion: String!
-
-    me: User
-
-    bookingsByStudent(studentId: ID!): [BookingEvent!]!
-    bookingsByTutor(tutorId: ID!): [BookingEvent!]!
-    userById(id: ID!): User
-       tutorProfileByUserId(userId: ID!): TutorProfile
-  }
-
-  input CompleteProfileInput {
-    accountType: String!
-    firstName: String!
-    lastName: String!
-    phone: String
-  }
-
-  type Mutation {
-    completeProfile(input: CompleteProfileInput!): User!
+    sessionsByStudent(studentId: ID!): [SessionEvent!]!
+    sessionsByTutor(tutorId: ID!): [SessionEvent!]!
   }
 `;
-
 
 const resolvers = {
   Query: {
     ping: () => "pong",
-    schemaCanary: () => "schema-canary-v1",
-    debugSchemaVersion: () => "sso-v1",
 
- me: async (_, __, { authHeader }) => {
-  const claims = getMsClaims(authHeader);
-  if (!claims?.oid) return null;
+    sessionsByTutor: async (_, { tutorId }) => {
+      const bookings = await Booking.find({ tutorId }).select("_id").lean();
+      const bookingIds = bookings.map((b) => b._id);
+      if (!bookingIds.length) return [];
 
-  const msOid = claims.oid;
-  const email =
-    (claims.preferred_username || claims.upn || "").toLowerCase() || null;
+      const sessions = await Session.find({ bookingId: { $in: bookingIds } })
+        .sort({ createdAt: -1 })
+        .lean();
 
-  const fullName = claims.name || "";
-  const parts = fullName.trim().split(/\s+/);
-  const firstName = claims.given_name || parts[0] || null;
-  const lastName = claims.family_name || parts.slice(1).join(" ") || null;
-
-  // 1) Try match by msOid (best)
-  let user = await User.findOne({ msOid }).lean();
-  if (user) {
-    return { ...user, profileComplete: !!user.profileComplete };
-  }
-
-  // 2) If not found, try match by email (this is the missing link)
-  if (email) {
-    const existingByEmail = await User.findOne({ user_email: email });
-    if (existingByEmail) {
-      // Link the account to Microsoft
-      existingByEmail.msOid = msOid;
-      existingByEmail.authProvider = "microsoft";
-
-      // If the user already filled out the profile earlier, keep it complete
-      // (or compute it; simplest: set true if they have accountType + names)
-      if (existingByEmail.profileComplete !== true) {
-        const looksComplete =
-          !!existingByEmail.accountType &&
-          !!existingByEmail.firstName &&
-          !!existingByEmail.lastName &&
-          !!existingByEmail.user_email;
-        existingByEmail.profileComplete = looksComplete;
-      }
-
-      // Fill names if missing
-      if (!existingByEmail.firstName && firstName) existingByEmail.firstName = firstName;
-      if (!existingByEmail.lastName && lastName) existingByEmail.lastName = lastName;
-
-      await existingByEmail.save();
-      return { ...existingByEmail.toObject(), profileComplete: !!existingByEmail.profileComplete };
-    }
-  }
-
-  // 3) No match at all -> create shell user
-  const created = await User.create({
-    authProvider: "microsoft",
-    msOid,
-    user_email: email,
-    firstName,
-    lastName,
-    profileComplete: false,
-  });
-
-  return created.toObject();
-},
-
-    userById: async (_, { id }) => User.findById(id).lean(),
-
-    tutorProfileByUserId: async (_, { userId }) =>
-      TutorProfile.findOne({ userId }).lean(),
-
-    bookingsByStudent: async (_, { studentId }) => {
-      const bookings = await Booking.find({ studentId }).lean();
-      return bookings
-        .filter((b) => b.start && b.end)
-        .map((b) => ({
-          _id: String(b._id),
-          title: b.iscompleted ? "Tutoring (Completed)" : "Tutoring",
-          start: new Date(b.start).toISOString(),
-          end: new Date(b.end).toISOString(),
-          studentId: b.studentId?.toString(),
-          tutorId: b.tutorId?.toString(),
-          iscompleted: !!b.iscompleted,
-        }));
+      return sessions.map((s) => {
+        const start = new Date(s.createdAt);
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour placeholder
+        return {
+          _id: String(s._id),
+          title: "Tutoring Session",
+          start: start.toISOString(),
+          end: end.toISOString(),
+          bookingId: String(s.bookingId),
+          roomId: s.roomId || null,
+          mode: s.mode ?? null,
+        };
+      });
     },
 
-    bookingsByTutor: async (_, { tutorId }) => {
-      const bookings = await Booking.find({ tutorId }).lean();
-      return bookings
-        .filter((b) => b.start && b.end)
-        .map((b) => ({
-          _id: String(b._id),
-          title: b.iscompleted ? "Tutoring (Completed)" : "Tutoring",
-          start: new Date(b.start).toISOString(),
-          end: new Date(b.end).toISOString(),
-          studentId: b.studentId?.toString(),
-          tutorId: b.tutorId?.toString(),
-          iscompleted: !!b.iscompleted,
-        }));
-    },
-  },
-  
-Mutation: {
-    completeProfile: async (_, { input }, { authHeader }) => {
-      const claims = getMsClaims(authHeader);
-      if (!claims?.oid) throw new Error("Not authenticated");
+    sessionsByStudent: async (_, { studentId }) => {
+      const bookings = await Booking.find({ studentId }).select("_id").lean();
+      const bookingIds = bookings.map((b) => b._id);
+      if (!bookingIds.length) return [];
 
-      const msOid = String(claims.oid);
-      const email = String(claims.preferred_username || claims.upn || "")
-        .trim()
-        .toLowerCase();
+      const sessions = await Session.find({ bookingId: { $in: bookingIds } })
+        .sort({ createdAt: -1 })
+        .lean();
 
-      if (!email) throw new Error("Microsoft token missing email/upn");
-
-      let user = await User.findOne({ msOid });
-      if (!user) user = await User.findOne({ user_email: email });
-      if (!user) user = new User({ user_email: email });
-
-      user.msOid = msOid;
-      user.msUpn = email;
-      user.teamsEnabled = true;
-      user.authProvider = "microsoft";
-
-      user.accountType = input.accountType;
-      user.firstName = input.firstName;
-      user.lastName = input.lastName;
-      user.phone = input.phone || "";
-      user.profileComplete = true;
-
-      await user.save();
-      return user.toObject();
+      return sessions.map((s) => {
+        const start = new Date(s.createdAt);
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // 1 hour placeholder
+        return {
+          _id: String(s._id),
+          title: "Tutoring Session",
+          start: start.toISOString(),
+          end: end.toISOString(),
+          bookingId: String(s.bookingId),
+          roomId: s.roomId || null,
+          mode: s.mode ?? null,
+        };
+      });
     },
   },
 };
 
-/* ---------------- Server Start ---------------- */
 async function startServer() {
   const apolloServer = new ApolloServer({
     typeDefs,
     resolvers,
-    csrfPrevention: false,
-    context: ({ req }) => ({
-      authHeader: req.headers.authorization || "",
-    }),
   });
 
   await apolloServer.start();
 
-  // We already configured Express CORS, so disable Apollo middleware CORS
-  apolloServer.applyMiddleware({ app, path: "/graphql", cors: false });
+  apolloServer.applyMiddleware({
+    app,
+    path: "/graphql",
+    cors: false, // we already handle CORS globally
+  });
+
+  // 404 after everything is registered
+  app.use((req, res) => res.status(404).json({ message: "Route not found" }));
+
+  // Error handler
+  app.use((err, req, res, next) => {
+    console.error("❌ Express error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  });
 
   app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`🚀 GraphQL at http://localhost:${PORT}/graphql`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 GraphQL ready at http://localhost:${PORT}${apolloServer.graphqlPath}`);
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error("❌ Failed to start server:", err);
+  process.exit(1);
+});

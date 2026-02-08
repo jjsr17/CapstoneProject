@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import "./search.css";
 
 export default function Search() {
@@ -7,14 +6,13 @@ export default function Search() {
     const [type, setType] = useState("");
     const [courses, setCourses] = useState([]);
 
-    const navigate = useNavigate();
-
     async function fetchSubjectCourses(subject) {
         try {
             const q = encodeURIComponent(subject);
             const t = type ? `&type=${encodeURIComponent(type)}` : "";
-            const res = await fetch(`/api/courses?subject=${q}${t}`);
-
+            const res = await fetch(
+                `http://localhost:5173/api/courses?subject=${q}${t}`
+            );
             if (!res.ok) throw new Error("Failed to fetch");
             setCourses(await res.json());
         } catch (err) {
@@ -26,9 +24,9 @@ export default function Search() {
         try {
             const q = encodeURIComponent(value || "");
             const t = newType ? `&type=${encodeURIComponent(newType)}` : "";
-           const res = await fetch(`/api/courses?query=${q}${t}`);
-
-
+            const res = await fetch(
+                `http://localhost:5173/api/courses?query=${q}${t}`
+            );
             if (!res.ok) throw new Error("Failed");
             setCourses(await res.json());
         } catch (err) {
@@ -37,34 +35,16 @@ export default function Search() {
     }
 
     function book(id) {
-        navigate(`/booking?id=${id}`);
+        alert("Booking flow for course ID: " + id);
     }
-
-    function goBack() {
-        navigate("/mainmenu");
-    }
-    function book(id) {
-  console.log("NAVIGATING TO BOOKING WITH ID:", id);
-  navigate(`/booking?id=${id}`);
-}
-
-function formatSlot(slot) {
-  const days = Array.isArray(slot.days) ? slot.days.join(", ") : "";
-  const time = `${slot.start} ${slot.startAMPM} ‚Äì ${slot.end} ${slot.endAMPM}`;
-  const mode =
-    slot.mode === "IRL" ? `In Person${slot.location ? ` ¬∑ ${slot.location}` : ""}` : "Online";
-
-  return `${days} ¬∑ ${time} ¬∑ ${mode}`;
-}
 
     return (
         <>
             <header>
-                <button className="back-btn" onClick={goBack}>‚Üê Back</button>
                 <h1>Noesis</h1>
             </header>
 
-            {/* SEARCH BAR */}
+            {/* SEARCH BAR ó identical structure */}
             <div className="search-wrapper">
                 <div className="search-container">
                     <input
@@ -91,7 +71,8 @@ function formatSlot(slot) {
                 </div>
             </div>
 
-            {/* SUBJECT GRID */}
+
+            {/* SUBJECT GRID ó untouched */}
             <div className="subjects">
                 <div className="subject-card" onClick={() => fetchSubjectCourses("Math")}>
                     <h2>Mathematics</h2>
@@ -134,39 +115,21 @@ function formatSlot(slot) {
                 </div>
             </div>
 
-            {/* SEARCH RESULTS */}
+            {/* SEARCH RESULTS ó SAME WIDTH & POSITION */}
             <div style={{ width: "80%", margin: "30px auto" }}>
                 {courses.length === 0 ? (
                     <p className="empty-text">No course offerings found.</p>
                 ) : (
                     courses.map((c) => (
-        <div key={c._id} className="subject-result">
-            <h3>{c.courseName}</h3>
-
-            <p>
-            <strong>{c.subject}</strong> ¬∑ {c.type}
-            </p>
-
-            <p>{c.description}</p>
-
-            {/* ‚úÖ Availability */}
-            {Array.isArray(c.availability) && c.availability.length > 0 ? (
-            <div className="availability-preview">
-                <strong>Available:</strong>
-                <ul>
-                {c.availability.map((slot, idx) => (
-                    <li key={idx}>{formatSlot(slot)}</li>
-                ))}
-                </ul>
-            </div>
-            ) : (
-            <p className="muted">No availability posted.</p>
-            )}
-
-            <button onClick={() => book(c._id)}>Book</button>
-        </div>
-        ))
-
+                        <div key={c._id} className="subject-result">
+                            <h3>{c.courseName}</h3>
+                            <p>
+                                <strong>{c.subject}</strong> ∑ {c.type}
+                            </p>
+                            <p>{c.description}</p>
+                            <button onClick={() => book(c._id)}>Book</button>
+                        </div>
+                    ))
                 )}
             </div>
         </>

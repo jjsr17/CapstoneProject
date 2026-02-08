@@ -10,12 +10,6 @@ import EditEducatorProfile from "./editeducatorprofile.jsx";
 import CourseOffering from "./courseoffering.jsx";
 import Search from "./search.jsx";
 import MainMenu from "./mainmenu.jsx";
-import Booking from "./booking.jsx";
-import Messages from "./messages.jsx";
-import Settings from "./settings.jsx";
-import AuthGate from "./AuthGate";
-import AccountRouter from "./AccountRouter";
-
 
 export default function App() {
   return (
@@ -28,19 +22,15 @@ export default function App() {
         <Route path="/signup" element={<SignUpMenu />} />
         <Route path="/tutors" element={<Tutors />} />
         <Route path="/home" element={<Home />} />
+
         <Route path="/account" element={<Account />} />
-        <Route path="/account-redirect" element={<AccountRouter />} />
         <Route path="/educatoraccount" element={<EducatorAccount />} />
         <Route path="/editprofile" element={<EditProfile />} />
         <Route path="/editeducatorprofile" element={<EditEducatorProfile />} />
 
         <Route path="/courseoffering" element={<CourseOffering />} />
         <Route path="/search" element={<Search />} />
-        <Route path="/mainmenu" element={<MainMenu />} />
-        <Route path="/booking" element={<Booking />} />
-        <Route path="/messages" element={<Messages /> } />
-        <Route path="settings" element={<Settings />} />
-        <Route path="/gate" element={<AuthGate />} />
+              <Route path="/mainmenu" element={<MainMenu /> } />
 
       </Routes>
     </BrowserRouter>

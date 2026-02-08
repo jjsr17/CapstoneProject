@@ -1,15 +1,10 @@
 const mongoose = require("mongoose");
 
-const MessageSchema = new mongoose.Schema(
-  {
-    conversationId: { type: mongoose.Schema.Types.ObjectId, ref: "Conversation", required: true },
-    senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    type: { type: String, default: "text" },
-    text: { type: String, default: "" },
-  },
-  { timestamps: true }
-);
-
-MessageSchema.index({ conversationId: 1, createdAt: 1 });
+const MessageSchema = new mongoose.Schema({
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: "Session" },
+  senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  type: { type: String },   // text, image, file, etc.
+  text: { type: String }
+}, { timestamps: true });
 
 module.exports = mongoose.model("Message", MessageSchema);

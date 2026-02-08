@@ -2,7 +2,6 @@
 
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
-console.log("HOME SCREEN LOADED");
 
 export default function HomeScreen() {
   const userName = "User"; // placeholder
@@ -13,22 +12,21 @@ export default function HomeScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push("/postlogin")}
+        onPress={() => router.push("/profile")}
       >
-        <Text style={styles.buttonText}>Account</Text>
+        <Text style={styles.buttonText}>Profile</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.button}
         onPress={() => router.push("/classes")}
-
       >
         <Text style={styles.buttonText}>Browse Classes</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.button, styles.logoutButton]}
-        onPress={() => router.replace("/auth/login")}
+        onPress={() => router.replace("/")}
       >
         <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>

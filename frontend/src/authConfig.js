@@ -10,17 +10,7 @@ export const msalConfig = {
   },
 };
 
-// ✅ token for YOUR API (GraphQL/me)
 export const loginRequest = {
-  scopes: ["api://67c503d9-933d-4652-a7df-9298c0c010f4/access_as_user"],
+  scopes: ["api://67c503d9-933d-4652-a7df-9298c0c010f4/access_as_user"]
 };
 
-// ✅ token for Microsoft Graph (Teams chat)
-export const graphRequest = {
-  scopes: [
-    "User.Read",
-    "Chat.ReadWrite",
-    "ChatMessage.Send",
-    "TeamsTab.Create"
-  ]
-};
