@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+// MobileApp/app/auth/signup.jsx
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 import {
   View,
@@ -11,12 +13,118 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+/** --------- API BASE --------- **/
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000"; // your LAN IP
+const API_DEVICE = "http://192.168.86.22:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
+/** --------- Paths --------- **/
 const SIGNUP_PATH = "/api/users/signup";
+const GRAPHQL_PATH = "/graphql";
+
+/** --------- Storage keys (match web) --------- **/
+const LS = {
+  useMsSso: "useMsSso",
+  msAccessToken: "msAccessToken",
+  mongoUserId: "mongoUserId",
+  accountType: "accountType",
+  tutorId: "tutorId",
+  profileComplete: "profileComplete",
+};
+
+/** --------- Helpers --------- **/
+async function getItem(key) {
+  if (Platform.OS === "web") return localStorage.getItem(key);
+  return AsyncStorage.getItem(key);
+}
+
+async function setItem(key, value) {
+  if (Platform.OS === "web") return localStorage.setItem(key, value);
+  return AsyncStorage.setItem(key, value);
+}
+
+async function removeItem(key) {
+  if (Platform.OS === "web") return localStorage.removeItem(key);
+  return AsyncStorage.removeItem(key);
+}
+
+/** --------- GraphQL helpers --------- **/
+async function fetchMe(API_URL, msToken) {
+  const res = await fetch(`${API_URL}/graphql`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${msToken}`,
+    },
+    body: JSON.stringify({
+      query: `
+        query Me {
+          me {
+            firstName
+            lastName
+            user_email
+          }
+        }
+      `,
+    }),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.errors?.[0]?.message || "Failed to load profile (me).";
+    throw new Error(msg);
+  }
+
+  return json?.data?.me || null;
+}
+
+async function gqlRequest({ token, query, variables }) {
+  const res = await fetch(`${API_URL}${GRAPHQL_PATH}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg = json?.errors?.[0]?.message || `GraphQL error (${res.status})`;
+    throw new Error(msg);
+  }
+  if (json?.errors?.length) throw new Error(json.errors[0].message);
+  return json?.data;
+}
+
+const COMPLETE_PROFILE_MUTATION = `
+  mutation CompleteProfile($input: CompleteProfileInput!) {
+    completeProfile(input: $input) {
+      _id
+      accountType
+      profileComplete
+      user_email
+      firstName
+      lastName
+      authProvider
+      msOid
+      msUpn
+      teamsEnabled
+    }
+  }
+`;
+
+const ME_QUERY = `
+  query Me {
+    me {
+      firstName
+      lastName
+      user_email
+    }
+  }
+`;
 
 function Pill({ label, active, onPress }) {
   return (
@@ -34,58 +142,81 @@ function Pill({ label, active, onPress }) {
 export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
 
-  // Account type
-  const [accountType, setAccountType] = useState("student"); // "student" | "educator"
+  /** --------- Detect auth mode (like web) --------- **/
+  const [useMs, setUseMs] = useState(false);
+  const [msToken, setMsToken] = useState("");
 
-  // Name
+  const hasMsToken = !!msToken;
+  const isMsMode = useMs === true && hasMsToken;
+  const isLocalMode = !isMsMode;
+
+  useEffect(() => {
+    (async () => {
+      const useMsSso = (await getItem(LS.useMsSso)) === "true";
+      const token = (await getItem(LS.msAccessToken)) || "";
+      setUseMs(useMsSso);
+      setMsToken(token);
+    })();
+  }, []);
+  /** --------- Form state (same fields as your mobile version) --------- **/
+  const [accountType, setAccountType] = useState("student"); // student | educator
+
+  // Names
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // Login
-  const [user_email, setUser_email] = useState("");
-  const [password, setPassword] = useState("");
+  // Contact + auth
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
 
-  // Demographics (optional)
+  // Passwords (local only)
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Demographics
   const [gender, setGender] = useState(""); // "", "Male", "Female", "Other"
-  const [age, setAge] = useState(""); // keep as string in UI; convert to number
+  const [age, setAge] = useState("");
   const [birthDate, setBirthDate] = useState("");
 
-  // Address (optional)
+  // Address
   const [address, setAddress] = useState("");
   const [town, setTown] = useState("");
   const [stateField, setStateField] = useState("");
   const [country, setCountry] = useState("");
 
-  // Contact (optional)
-  const [phone, setPhone] = useState("");
+  // Student fields
+  const [schoolName, setSchoolName] = useState("");
+  const [educationLevel, setEducationLevel] = useState(""); // "", "school", "college"
+  const [grade, setGrade] = useState("");
+  const [collegeYear, setCollegeYear] = useState("");
+  const [studentConcentration, setStudentConcentration] = useState("");
+  const [degreeType, setDegreeType] = useState("Associate");
 
-  // Student fields (optional)
-  const [student_schoolName, setStudent_schoolName] = useState("");
-  const [student_educationLevel, setStudent_educationLevel] = useState(""); // "", "school", "college"
-  const [student_grade, setStudent_grade] = useState("");
-  const [student_collegeYear, setStudent_collegeYear] = useState("");
-  const [student_concentration, setStudent_concentration] = useState("");
-  const [student_degreeType, setStudent_degreeType] = useState("");
+  // Educator fields
+  const [educatorCollegeName, setEducatorCollegeName] = useState("");
+  const [educatorDegree, setEducatorDegree] = useState("Bachelor");
+  const [educatorConcentration, setEducatorConcentration] = useState("");
+  const [credentialsFileName, setCredentialsFileName] = useState(""); // mobile: name only
 
-  // Educator fields (optional)
-  const [educator_collegeName, setEducator_collegeName] = useState("");
-  const [educator_degree, setEducator_degree] = useState("");
-  const [educator_concentration, setEducator_concentration] = useState("");
-  const [educator_credentialsFileName, setEducator_credentialsFileName] = useState("");
+  /** --------- Autofill from ME in MS mode --------- **/
+ 
 
+  /** --------- Build payload (like web) --------- **/
   const payload = useMemo(() => {
-    // Convert age safely (optional)
     const ageNum =
-      String(age).trim() === "" ? undefined : Number.isFinite(Number(age)) ? Number(age) : undefined;
+      String(age).trim() === ""
+        ? undefined
+        : Number.isFinite(Number(age))
+        ? Number(age)
+        : undefined;
 
     const base = {
-      accountType, // required
       firstName: firstName.trim(),
       middleName: middleName.trim() || undefined,
       lastName: lastName.trim(),
-      gender: gender.trim(), // must be "", "Male", "Female", "Other"
-      age: ageNum, // number or undefined
+      gender: gender.trim(), // "", "Male","Female","Other"
+      age: ageNum,
       birthDate: birthDate.trim() || undefined,
 
       address: address.trim() || undefined,
@@ -95,20 +226,23 @@ export default function SignupScreen() {
 
       phone: phone.trim() || undefined,
 
-      user_email: user_email.trim().toLowerCase(), // required by schema
-      password, // controller should hash -> passwordHash
+      user_email: email.trim().toLowerCase(),
+      accountType,
+
+      // ✅ only send password for local
+      password: isLocalMode ? password : undefined,
     };
 
     if (accountType === "student") {
       return {
         ...base,
         student: {
-          schoolName: student_schoolName.trim() || undefined,
-          educationLevel: student_educationLevel.trim(), // "", "school", "college"
-          grade: student_grade.trim() || undefined,
-          collegeYear: student_collegeYear.trim() || undefined,
-          concentration: student_concentration.trim() || undefined,
-          degreeType: student_degreeType.trim() || undefined,
+          schoolName: schoolName.trim() || undefined,
+          educationLevel: educationLevel.trim().toLowerCase(),// "", "school", "college"
+          grade: grade.trim() || undefined,
+          collegeYear: collegeYear.trim() || undefined,
+          concentration: studentConcentration.trim() || undefined,
+          degreeType: degreeType.trim() || undefined,
         },
       };
     }
@@ -116,10 +250,10 @@ export default function SignupScreen() {
     return {
       ...base,
       educator: {
-        collegeName: educator_collegeName.trim() || undefined,
-        degree: educator_degree.trim() || undefined,
-        concentration: educator_concentration.trim() || undefined,
-        credentialsFileName: educator_credentialsFileName.trim() || undefined,
+        collegeName: educatorCollegeName.trim() || undefined,
+        degree: educatorDegree.trim() || undefined,
+        concentration: educatorConcentration.trim() || undefined,
+        credentialsFileName: credentialsFileName.trim() || undefined,
       },
     };
   }, [
@@ -135,47 +269,75 @@ export default function SignupScreen() {
     stateField,
     country,
     phone,
-    user_email,
+    email,
     password,
-    student_schoolName,
-    student_educationLevel,
-    student_grade,
-    student_collegeYear,
-    student_concentration,
-    student_degreeType,
-    educator_collegeName,
-    educator_degree,
-    educator_concentration,
-    educator_credentialsFileName,
+    isLocalMode,
+    // student
+    schoolName,
+    educationLevel,
+    grade,
+    collegeYear,
+    studentConcentration,
+    degreeType,
+    // educator
+    educatorCollegeName,
+    educatorDegree,
+    educatorConcentration,
+    credentialsFileName,
   ]);
 
-  const validate = () => {
+  const validate = useCallback(() => {
+    const edu = educationLevel.trim().toLowerCase();
+
     if (!payload.firstName) return "First Name is required.";
     if (!payload.lastName) return "Last Name is required.";
     if (!payload.user_email) return "Email is required.";
-    if (!password) return "Password is required.";
     if (!["student", "educator"].includes(accountType)) return "Invalid account type.";
 
-    // Backend enum: ["Male","Female","Other",""]
+    if (isLocalMode) {
+      if (!password) return "Password is required.";
+      if (password !== confirmPassword) return "Passwords do not match.";
+    }
+
     if (!["", "Male", "Female", "Other"].includes(gender.trim())) {
       return 'Gender must be "Male", "Female", "Other", or blank.';
     }
 
-    // Student enum: ["school","college",""]
-    if (accountType === "student" && !["", "school", "college"].includes(student_educationLevel.trim())) {
+    if ( accountType === "student" && !["", "school", "college"].includes(edu)) {
       return 'Education Level must be "school", "college", or blank.';
     }
 
-    // If age is provided, must be a number >= 0
+
     if (String(age).trim() !== "") {
       const n = Number(age);
       if (!Number.isFinite(n) || n < 0) return "Age must be a valid number (0+).";
     }
 
     return null;
-  };
+  }, [payload, accountType, isLocalMode, password, confirmPassword, gender, age, educationLevel]);
+
+  /** --------- Submit (match web logic) --------- **/
+  useEffect(() => {
+  (async () => {
+    try {
+      if (!isMsMode || !msToken) return;
+
+      const me = await fetchMe(API_URL, msToken);
+      if (!me) return;
+
+      setFirstName((v) => (v ? v : me.firstName || ""));
+      setLastName((v) => (v ? v : me.lastName || ""));
+      setEmail((v) => (v ? v : me.user_email || ""));
+    } catch (e) {
+      console.log("ME autofill failed:", e?.message || e);
+    }
+  })();
+}, [isMsMode, msToken]);
 
   const handleSignup = async () => {
+  try {
+    console.log("handleSignup() start");
+
     const err = validate();
     if (err) {
       Alert.alert("Fix this", err);
@@ -183,37 +345,103 @@ export default function SignupScreen() {
     }
 
     setLoading(true);
+
+    // 1) REST signup (same as web)
+    const url = `${API_URL}${SIGNUP_PATH}`;
+    const headers = { "Content-Type": "application/json" };
+    if (isMsMode && msToken) headers.Authorization = `Bearer ${msToken}`;
+
+    const resp = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const raw = await resp.text();
+    let data = null;
     try {
-      const resp = await fetch(`${API_URL}${SIGNUP_PATH}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      data = raw ? JSON.parse(raw) : null;
+    } catch {
+      data = { message: raw };
+    }
+
+    if (!resp.ok) {
+      Alert.alert("Signup failed", data?.message || data?.error || `HTTP ${resp.status}`);
+      return;
+    }
+
+    // 2) IMPORTANT: In MS mode, flip teamsEnabled by calling completeProfile (like web)
+    if (isMsMode && msToken) {
+      const gqlData = await gqlRequest({
+        token: msToken,
+        query: COMPLETE_PROFILE_MUTATION,
+        variables: {
+          input: {
+            accountType,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phone: phone.trim() || "",
+          },
+        },
       });
 
-      const data = await resp.json().catch(() => ({}));
-
-      if (!resp.ok) {
-        Alert.alert("Signup failed", data.message || `HTTP ${resp.status}`);
+      const user = gqlData?.completeProfile;
+      if (!user?._id) {
+        Alert.alert("Microsoft profile completion failed", "No user returned.");
         return;
       }
 
-      Alert.alert("Success", "Account created");
-      router.replace("/auth/login");
-    } catch (e) {
-      Alert.alert("Network error", String(e));
-    } finally {
-      setLoading(false);
+      // store the same stuff as web
+      await setItem(LS.mongoUserId, String(user._id));
+      await setItem(LS.tutorId, String(user._id));
+      await setItem(LS.accountType, String(user.accountType || accountType));
+      await setItem(LS.profileComplete, String(!!user.profileComplete));
+
+      // ✅ go to home (or educatoraccount)
+      router.replace(user.accountType === "educator" ? "/educatoraccount" : "/home");
+      return;
     }
-  };
+
+    // 3) Local mode (optional) store returned id if your backend sends it
+    const userId = data?.userId;
+    if (userId) {
+      await setItem(LS.mongoUserId, String(userId));
+      await setItem(LS.tutorId, String(userId));
+    }
+    await setItem(LS.accountType, String(accountType));
+    await setItem(LS.profileComplete, "true");
+
+    router.replace(accountType === "educator" ? "/educatoraccount" : "/home");
+  } catch (e) {
+    console.error("handleSignup error:", e);
+    Alert.alert("Network/Crash", String(e?.message ?? e));
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const onBack = useCallback(async () => {
+    // optional: mimic web "Back goes to login"
+    router.replace("/auth/login");
+  }, []);
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Create Account</Text>
 
+      {/* Mode info (helpful while debugging) */}
+      <Text style={styles.modeText}>
+        Mode: {isMsMode ? "Microsoft SSO" : "Local"}
+      </Text>
+
       <Text style={styles.section}>Account Type</Text>
       <View style={styles.pillRow}>
         <Pill label="Student" active={accountType === "student"} onPress={() => setAccountType("student")} />
-        <Pill label="Educator" active={accountType === "educator"} onPress={() => setAccountType("educator")} />
+        <Pill
+          label="Educator"
+          active={accountType === "educator"}
+          onPress={() => setAccountType("educator")}
+        />
       </View>
 
       <Text style={styles.section}>Identity</Text>
@@ -221,35 +449,16 @@ export default function SignupScreen() {
       <TextInput style={styles.input} placeholder="Middle Name" value={middleName} onChangeText={setMiddleName} editable={!loading} />
       <TextInput style={styles.input} placeholder="Last Name *" value={lastName} onChangeText={setLastName} editable={!loading} />
 
-      <Text style={styles.section}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email *"
-        value={user_email}
-        onChangeText={setUser_email}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        editable={!loading}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password *"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        editable={!loading}
-      />
-
       <Text style={styles.section}>Demographics (optional)</Text>
       <TextInput
         style={styles.input}
-        placeholder='Gender ("Male" / "Female" / "Other")'
+        placeholder='Gender (Male / Female / Other)'
         value={gender}
         onChangeText={setGender}
         editable={!loading}
       />
       <TextInput style={styles.input} placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" editable={!loading} />
-      <TextInput style={styles.input} placeholder="Birth Date (string)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
+      <TextInput style={styles.input} placeholder="Birth Date (MM/DD/YYYY)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
 
       <Text style={styles.section}>Address (optional)</Text>
       <TextInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} editable={!loading} />
@@ -257,36 +466,85 @@ export default function SignupScreen() {
       <TextInput style={styles.input} placeholder="State" value={stateField} onChangeText={setStateField} editable={!loading} />
       <TextInput style={styles.input} placeholder="Country" value={country} onChangeText={setCountry} editable={!loading} />
 
-      <Text style={styles.section}>Contact (optional)</Text>
+      <Text style={styles.section}>Contact</Text>
       <TextInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" editable={!loading} />
+
+      <Text style={styles.section}>Email</Text>
+      <TextInput
+        style={[styles.input, !isLocalMode && styles.inputReadOnly]}
+        placeholder="Email *"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        editable={!loading && isLocalMode} // ✅ readOnly in MS mode
+      />
+
+      {/* Passwords ONLY for local mode */}
+      {isLocalMode && (
+        <>
+          <Text style={styles.section}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Password *"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!loading}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password *"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            editable={!loading}
+          />
+        </>
+      )}
 
       {accountType === "student" ? (
         <>
           <Text style={styles.section}>Student (optional)</Text>
-          <TextInput style={styles.input} placeholder="School Name" value={student_schoolName} onChangeText={setStudent_schoolName} editable={!loading} />
+          <TextInput style={styles.input} placeholder="School Name" value={schoolName} onChangeText={setSchoolName} editable={!loading} />
+         <View style={styles.pillRow}>
+          <Pill
+              label="School"
+              active={educationLevel === "school"}
+              onPress={() => setEducationLevel("school")}
+            />
+
+            <Pill
+              label="College"
+              active={educationLevel === "college"}
+              onPress={() => setEducationLevel("college")}
+            />
+
+        </View>
+
+          <TextInput style={styles.input} placeholder="Grade" value={grade} onChangeText={setGrade} editable={!loading} />
+          <TextInput style={styles.input} placeholder="College Year" value={collegeYear} onChangeText={setCollegeYear} editable={!loading} />
+          <TextInput style={styles.input} placeholder="Concentration" value={studentConcentration} onChangeText={setStudentConcentration} editable={!loading} />
+
           <TextInput
             style={styles.input}
-            placeholder='Education Level ("school" / "college")'
-            value={student_educationLevel}
-            onChangeText={setStudent_educationLevel}
+            placeholder="Degree Type (Associate/Bachelor/Master)"
+            value={degreeType}
+            onChangeText={setDegreeType}
             editable={!loading}
           />
-          <TextInput style={styles.input} placeholder="Grade" value={student_grade} onChangeText={setStudent_grade} editable={!loading} />
-          <TextInput style={styles.input} placeholder="College Year" value={student_collegeYear} onChangeText={setStudent_collegeYear} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Concentration" value={student_concentration} onChangeText={setStudent_concentration} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Degree Type" value={student_degreeType} onChangeText={setStudent_degreeType} editable={!loading} />
         </>
       ) : (
         <>
           <Text style={styles.section}>Educator (optional)</Text>
-          <TextInput style={styles.input} placeholder="College Name" value={educator_collegeName} onChangeText={setEducator_collegeName} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Degree" value={educator_degree} onChangeText={setEducator_degree} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Concentration" value={educator_concentration} onChangeText={setEducator_concentration} editable={!loading} />
+          <TextInput style={styles.input} placeholder="College Name" value={educatorCollegeName} onChangeText={setEducatorCollegeName} editable={!loading} />
+          <TextInput style={styles.input} placeholder="Degree (Bachelor/Master/Doctorate)" value={educatorDegree} onChangeText={setEducatorDegree} editable={!loading} />
+          <TextInput style={styles.input} placeholder="Concentration" value={educatorConcentration} onChangeText={setEducatorConcentration} editable={!loading} />
           <TextInput
             style={styles.input}
-            placeholder="Credentials File Name"
-            value={educator_credentialsFileName}
-            onChangeText={setEducator_credentialsFileName}
+            placeholder="Credentials file name (PDF)"
+            value={credentialsFileName}
+            onChangeText={setCredentialsFileName}
             editable={!loading}
           />
         </>
@@ -300,12 +558,23 @@ export default function SignupScreen() {
           <Text style={{ marginLeft: 10 }}>Creating account…</Text>
         </View>
       ) : (
-        <Pressable style={styles.primaryBtn} onPress={handleSignup} accessibilityRole="button" hitSlop={10}>
+        // <Pressable style={styles.primaryBtn} onPress={handleSignup} accessibilityRole="button" hitSlop={10}>
+        //   <Text style={styles.primaryBtnText}>CREATE ACCOUNT</Text>
+        // </Pressable>
+         <Pressable
+          style={styles.primaryBtn}
+          onPress={() => {
+            console.log("CREATE ACCOUNT pressed ✅");
+            Alert.alert("Pressed", "Create Account button is firing");
+            handleSignup();
+          }}
+        >
           <Text style={styles.primaryBtnText}>CREATE ACCOUNT</Text>
         </Pressable>
+
       )}
 
-      <Pressable style={styles.secondaryBtn} onPress={() => router.back()} disabled={loading} accessibilityRole="button">
+      <Pressable style={styles.secondaryBtn} onPress={onBack} disabled={loading} accessibilityRole="button">
         <Text style={styles.secondaryBtnText}>BACK</Text>
       </Pressable>
 
@@ -317,7 +586,8 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 28, fontWeight: "800", marginBottom: 10, textAlign: "center" },
+  title: { fontSize: 28, fontWeight: "800", marginBottom: 8, textAlign: "center" },
+  modeText: { textAlign: "center", color: "#666", marginBottom: 10 },
 
   section: { marginTop: 14, fontSize: 16, fontWeight: "700" },
 
@@ -328,6 +598,9 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
     backgroundColor: "#fff",
+  },
+  inputReadOnly: {
+    backgroundColor: "#f2f2f2",
   },
 
   pillRow: { flexDirection: "row", gap: 10, marginTop: 8 },
