@@ -2,13 +2,10 @@
   "ExpandedNodes": [
     "",
     "\\backend",
-    "\\backend\\config",
     "\\frontend",
-    "\\frontend\\MobileApp\\assets",
-    "\\frontend\\MobileApp\\assets\\images",
-    "\\frontend\\src",
-    "\\frontend\\src\\api",
-    "\\frontend\\src\\assets"
+    "\\frontenddesktop",
+    "\\frontend\\src"
   ],
+  "SelectedNode": "\\backend",
   "PreviewInSolutionExplorer": false
 }

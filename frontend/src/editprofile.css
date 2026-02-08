@@ -1,89 +1,63 @@
-﻿/* Page base */
-.ep-page {
-    background-color: #f4f4f4;
-    min-height: 100vh;
+body {
+    margin: 0;
     font-family: "Times New Roman", serif;
+    background-color: #f4f4f4;
 }
 
-/* Top bar */
-.ep-topbar {
+/* Top Bar */
+.top-bar {
     display: flex;
     align-items: center;
     padding: 12px 20px;
     background-color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 10;
     position: relative;
-    z-index: 50;
 }
 
-.ep-back {
+.back-btn {
     margin-right: 15px;
     padding: 6px 12px;
     cursor: pointer;
 }
 
-.ep-title {
+.site-title {
     font-size: 26px;
     color: blueviolet;
     flex-grow: 1;
 }
 
 /* Banner */
-.ep-banner {
+.banner {
     position: relative;
     height: 220px;
     background-color: #d9d9d9;
-    overflow: hidden;
-    z-index: 1;
 }
 
-.ep-banner-img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    pointer-events: none; 
-}
+    .banner input {
+        display: none;
+    }
 
-.ep-banner-input {
-    display: none;
-}
-
-.ep-banner-label {
+.banner-label {
     position: absolute;
     right: 20px;
     bottom: 20px;
     background: rgba(0,0,0,0.6);
-    color: #fff;
+    color: white;
     padding: 8px 12px;
     border-radius: 6px;
     cursor: pointer;
-    z-index: 9999; 
-    pointer-events: auto; 
-    user-select: none;
 }
 
-/* Profile area wrapper */
-.ep-profile-wrap {
-    position: relative;
-    z-index: 10;
-}
-
-/* Profile area */
-.ep-profile-area {
+/* Profile Area */
+.profile-area {
     position: relative;
     padding-left: 40px;
     margin-top: -60px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    z-index: 5;
 }
 
-/* Avatar */
-.ep-avatar {
+.profile-pic {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -92,14 +66,13 @@
     overflow: hidden;
 }
 
-    .ep-avatar img {
+    .profile-pic img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
-/* Upload profile button */
-.ep-upload {
+.profile-upload {
     margin-top: 8px;
     font-size: 14px;
     background-color: #333;
@@ -108,22 +81,19 @@
     border-radius: 6px;
     cursor: pointer;
     display: inline-block;
-    position: relative;
-    z-index: 20;
 }
 
-    .ep-upload input {
+    .profile-upload input {
         display: none;
     }
 
-/* Form container */
-.ep-form {
+/* Form */
+.form-container {
     padding: 40px;
     max-width: 900px;
 }
 
-/* Sections */
-.ep-section {
+.section {
     background-color: white;
     padding: 20px;
     border-radius: 12px;
@@ -131,52 +101,47 @@
     margin-bottom: 25px;
 }
 
-    .ep-section h2 {
+    .section h2 {
         margin-top: 0;
         border-bottom: 1px solid #ddd;
         padding-bottom: 6px;
     }
 
-/* Rows / inputs */
-.ep-row {
+.row {
     display: flex;
     gap: 20px;
     margin-bottom: 15px;
 }
 
-.ep-group {
+.input-group {
     width: 100%;
 }
 
-    .ep-group label {
+    .input-group label {
         display: block;
         margin-bottom: 5px;
     }
 
-    .ep-group input,
-    .ep-group textarea {
+    .input-group input,
+    textarea {
         width: 100%;
         padding: 10px;
         font-size: 15px;
         border-radius: 6px;
         border: 1px solid #ccc;
-        background: white;
-        color: #000;
-        box-sizing: border-box;
     }
 
-    .ep-group textarea {
-        min-height: 80px;
-    }
-
-/* Buttons */
-.ep-actions {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
+textarea {
+    min-height: 80px;
 }
 
-.ep-btn {
+/* Buttons */
+.button-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.btn {
     width: 48%;
     padding: 12px;
     font-size: 16px;
@@ -185,26 +150,11 @@
     cursor: pointer;
 }
 
-.ep-cancel {
+.btn-cancel {
     background-color: #e6e6e6;
 }
 
-.ep-save {
+.btn-save {
     background-color: blue;
     color: white;
-}
-
-.ep-profile-wrap,
-.ep-profile-area,
-.ep-avatar {
-    pointer-events: none;
-}
-
-.ep-upload {
-    pointer-events: auto;
-}
-
-.ep-banner-label {
-    z-index: 999999;
-    pointer-events: auto;
 }

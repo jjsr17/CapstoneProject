@@ -1,88 +1,62 @@
-﻿/* Page base */
-.eep-page {
-    background-color: #f4f4f4;
-    min-height: 100vh;
+body {
+    margin: 0;
     font-family: "Times New Roman", serif;
+    background-color: #f4f4f4;
 }
 
-/* Top bar */
-.eep-topbar {
+/* Top Bar */
+.top-bar {
     display: flex;
     align-items: center;
     padding: 12px 20px;
     background-color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     position: relative;
-    z-index: 50;
+    z-index: 10;
 }
 
-.eep-back {
-    margin-right: 15px;
-    padding: 6px 12px;
-    cursor: pointer;
-}
-
-.eep-title {
+.site-title {
     font-size: 26px;
     color: blueviolet;
     flex-grow: 1;
 }
 
+.back-btn {
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
 /* Banner */
-.eep-banner {
-    position: relative;
+.banner {
     height: 220px;
     background-color: #d9d9d9;
-    overflow: hidden;
-    isolation: isolate;
+    position: relative;
 }
 
-.eep-banner-img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    pointer-events: none;
-}
+    .banner input {
+        display: none;
+    }
 
-.eep-banner-input {
-    display: none;
-}
-
-.eep-banner-label {
-    position: absolute;
-    right: 20px;
-    bottom: 20px;
-    background: rgba(0,0,0,0.6);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    z-index: 10;
-    pointer-events: auto;
-    user-select: none;
-}
+    .banner label {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0,0,0,0.6);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
 
 /* Profile Image Area */
-.eep-profile-wrap {
-    position: relative;
-    z-index: 10;
-}
-
-.eep-profile-area {
+.profile-area {
     position: relative;
     padding-left: 40px;
-    margin-top: -60px; 
+    margin-top: -60px;
     z-index: 5;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
 }
 
-.eep-avatar {
+.profile-pic {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -91,14 +65,14 @@
     background-color: #eee;
 }
 
-    .eep-avatar img {
+    .profile-pic img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
 /* Profile upload button */
-.eep-upload {
+.profile-upload {
     margin-top: 8px;
     font-size: 14px;
     background-color: #333;
@@ -107,21 +81,19 @@
     border-radius: 6px;
     cursor: pointer;
     display: inline-block;
-    position: relative;
-    z-index: 20;
 }
 
-    .eep-upload input {
+    .profile-upload input {
         display: none;
     }
 
 /* Form */
-.eep-form {
+.form-container {
     padding: 40px;
     max-width: 900px;
 }
 
-.eep-section {
+.section {
     background: white;
     padding: 20px;
     border-radius: 12px;
@@ -129,67 +101,62 @@
     margin-bottom: 25px;
 }
 
-.eep-row {
+.row {
     display: flex;
     gap: 20px;
     margin-bottom: 15px;
 }
 
-    .eep-row.single {
+    .row.single {
         justify-content: center;
     }
 
-.eep-group {
+.input-group {
     width: 100%;
     box-sizing: border-box;
 }
 
-.eep-row.single .eep-group {
+.row.single .input-group {
     max-width: 95%;
 }
 
-.eep-group label {
+.input-group label {
     display: block;
     margin-bottom: 5px;
 }
 
-.eep-group input,
-.eep-group select,
-.eep-section textarea {
+.input-group input,
+.input-group textarea,
+.input-group select {
     width: 100%;
     padding: 10px;
     border-radius: 6px;
     border: 1px solid #ccc;
-    background: #fff;
-    color: #000;
-    box-sizing: border-box;
-    font-size: 15px;
 }
 
-.eep-section textarea {
+textarea {
     min-height: 80px;
 }
 
 /* Buttons */
-.eep-actions {
+.button-row {
     display: flex;
     justify-content: space-between;
 }
 
-.eep-btn {
+.btn {
     width: 48%;
     padding: 12px;
     cursor: pointer;
     border: none;
     border-radius: 6px;
-    font-size: 16px;
 }
 
-.eep-cancel {
+.btn-cancel {
     background: #e6e6e6;
 }
 
-.eep-save {
+.btn-save {
     background: blue;
     color: white;
 }

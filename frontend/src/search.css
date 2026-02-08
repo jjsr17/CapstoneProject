@@ -4,14 +4,6 @@
     background-color: white;
 }
 
-.page-background {
-    min-height: 100vh;
-    background-image: url("./assets/mainmenu.jpg");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
 header {
     position: relative;
     text-align: center;
@@ -76,7 +68,7 @@ header {
 }
 
 .subject-card {
-    background-color: lavender;
+    background-color: white;
     padding: 25px;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -96,7 +88,7 @@ header {
     }
 
     .subject-card p {
-        color: black;
+        color: #666;
         margin-top: 10px;
     }
 
@@ -105,13 +97,13 @@ header {
     margin: 12px 0;
     padding: 12px;
     border-radius: 8px;
-    background: lavender;
+    background: #fafafa;
     border: 1px solid #eee;
 }
 
 .empty-text {
     text-align: center;
-    color: black;
+    color: #666;
 }
 .availability-preview {
   margin-top: 10px;

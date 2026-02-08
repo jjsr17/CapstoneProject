@@ -2,24 +2,15 @@
 body {
     margin: 0;
     font-family: "Times New Roman", serif;
-    background-color: #e8d9ff;
+    background-color: white;
     color: #333;
 }
-
-.page-background {
-    min-height: 100vh;
-    background-image: url("./assets/mainmenu.jpg");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
 
 /* Header */
 header {
     text-align: center;
     padding: 30px 10px;
-    background-color: lavender;
+    background-color: white;
     border-bottom: 2px solid #eee;
 }
 
@@ -51,7 +42,7 @@ nav {
     }
 
         nav button:hover {
-            background-color: #c6b4ff;
+            background-color: lightsteelblue;
         }
 
 /* Layout */
@@ -62,7 +53,7 @@ nav {
 
 /* Cards */
 .card {
-    background-color: lavender;
+    background-color: white;
     border-radius: 10px;
     padding: 20px;
     margin: 20px 0;
@@ -77,7 +68,7 @@ nav {
 
 /* Offering Card */
 .offering-card {
-    background: #c6b4ff;
+    background: #fff;
     border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     padding: 12px;

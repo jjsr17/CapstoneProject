@@ -1,10 +1,26 @@
 // src/signup.jsx (or SignUpMenu.jsx)
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
-import LoginBG from "./assets/artbackground.jpeg";
+import { useQuery, useMutation } from "@apollo/client/react";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+const COMPLETE_PROFILE = gql`
+  mutation CompleteProfile($input: CompleteProfileInput!) {
+    completeProfile(input: $input) {
+      _id
+      accountType
+      profileComplete
+      user_email
+      firstName
+      lastName
+      authProvider
+      msOid
+      msUpn
+      teamsEnabled
+    }
+  }
+`;
 
 // LocalStorage keys
 const LS = {
@@ -26,11 +42,12 @@ const ME = gql`
   }
 `;
 
+
 export default function SignUpMenu() {
   // read once per page load
   const useMs = useMemo(() => localStorage.getItem(LS.useMsSso) === "true", []);
   const msToken = useMemo(() => localStorage.getItem(LS.msAccessToken) || "", []);
-
+  const [completeProfileMutation] = useMutation(COMPLETE_PROFILE);
   const isMsMode = useMs === true;
   const hasMsToken = !!msToken;
 
@@ -196,6 +213,38 @@ export default function SignUpMenu() {
         headers,
         body: JSON.stringify(payload),
       });
+      
+      if (isMsMode && hasMsToken) {
+      const resp = await completeProfileMutation({
+        variables: {
+          input: {
+            accountType,
+            firstName,
+            lastName,
+            phone,
+          },
+        },
+        context: {
+          headers: {
+            Authorization: `Bearer ${msToken}`,
+          },
+        },
+      });
+
+      const user = resp?.data?.completeProfile;
+      if (!user?._id) {
+        alert("Microsoft profile completion failed.");
+        return;
+      }
+
+      localStorage.setItem(LS.mongoUserId, user._id);
+      localStorage.setItem(LS.tutorId, user._id);
+      localStorage.setItem(LS.accountType, user.accountType || accountType);
+      localStorage.setItem(LS.profileComplete, String(!!user.profileComplete));
+
+      window.location.href = user.accountType === "educator" ? "/educatoraccount" : "/mainmenu";
+      return;
+    }
 
       const raw = await res.text();
       let respData = null;
@@ -242,12 +291,6 @@ export default function SignUpMenu() {
           justify-content: center;
           align-items: center;
           min-height: 100vh;
-
-
-          background-image: url(${LoginBG});
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
         }
         .signup-box {
           background-color: white;
@@ -283,7 +326,7 @@ export default function SignUpMenu() {
           box-sizing: border-box;
         }
         .input-small { max-width: 110px; }
-        .input-xsmall { max-width: 60px; }
+        .input-xsmall { max-width: 40px; }
         .input-medium { max-width: 100px; }
         .password-wrapper { position: relative; }
         .toggle-password {
@@ -364,7 +407,7 @@ export default function SignUpMenu() {
               </select>
             </div>
 
-            <div className="input-group input-xsmall">
+            <div className="input-group input-small">
               <label>Age</label>
               <input type="number" value={age} onChange={(e) => setAge(e.target.value)} />
             </div>

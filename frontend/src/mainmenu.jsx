@@ -11,9 +11,6 @@ export default function MainMenu() {
   const [offerings, setOfferings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [displayName, setDisplayName] = useState("");
-
-
   const loadLatestOfferings = useCallback(async () => {
     try {
       setLoading(true);
@@ -47,12 +44,6 @@ export default function MainMenu() {
     [navigate]
   );
 
-  useEffect(() => {
-    const name = localStorage.getItem("displayName");
-    if (name) setDisplayName(name);
-  }, []);
-
-
   const openCard = useCallback((type) => {
     alert("Opening: " + type + " section");
   }, []);
@@ -85,7 +76,7 @@ export default function MainMenu() {
   }, [navigate]);
 
   return (
-    <div className="page-background">
+    <>
       {/* Title */}
       <header>
         <h1>Noesis</h1>
@@ -102,7 +93,7 @@ export default function MainMenu() {
       {/* Main Content */}
       <div className="container">
         <p>
-          Welcome <strong>{displayName || "User"}</strong> to our website! Here you will find many tutors ready
+          Welcome [username] to our website! Here you will find many tutors ready
           to help you succeed in your classes.
         </p>
 
@@ -168,6 +159,6 @@ export default function MainMenu() {
             ))}
         </div>
       </div>
-    </div>
+    </>
   );
 }
