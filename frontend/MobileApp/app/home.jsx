@@ -20,8 +20,12 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>Browse Classes</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => router.push("/booking")}>
-        <Text style={styles.buttonText}>Book a session</Text>
+      <TouchableOpacity style={[styles.button, styles.disabledButton]} activeOpacity={1}>
+        <Text style={styles.buttonText}>Search</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.button, styles.disabledButton]} activeOpacity={1}>
+        <Text style={styles.buttonText}>Messages</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
