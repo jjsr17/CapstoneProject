@@ -3,8 +3,9 @@
     "",
     "\\backend",
     "\\frontend",
+    "\\frontenddesktop",
     "\\frontend\\src"
   ],
-  "SelectedNode": "\\frontend\\src\\editprofile.jsx",
+  "SelectedNode": "\\backend",
   "PreviewInSolutionExplorer": false
 }

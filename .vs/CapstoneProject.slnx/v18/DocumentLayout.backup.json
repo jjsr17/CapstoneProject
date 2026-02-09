@@ -3,36 +3,40 @@
   "WorkspaceRootPath": "C:\\Users\\willi\\Downloads\\CapstoneProject\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\editeducatorprofile.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\educatoraccount.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\editeducatorprofile.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\educatoraccount.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\editprofile.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\booking.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\editprofile.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\App.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\App.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\models\\TutorProfile.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\models\\TutorProfile.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\booking.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\package.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\package.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\server.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\server.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\Tutors.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\Tutors.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:backend\\.env||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\account.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:frontend\\src\\account.jsx||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     }
   ],
   "DocumentGroupContainers": [
@@ -42,97 +46,94 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "editprofile.jsx",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.jsx",
-              "RelativeDocumentMoniker": "frontend\\src\\editprofile.jsx",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.jsx",
-              "RelativeToolTip": "frontend\\src\\editprofile.jsx",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "educatoraccount.jsx",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\educatoraccount.jsx",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.jsx",
+              "RelativeToolTip": "frontend\\src\\educatoraccount.jsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFMBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-22T03:25:54.136Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "editprofile.css",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.css",
-              "RelativeDocumentMoniker": "frontend\\src\\editprofile.css",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editprofile.css",
-              "RelativeToolTip": "frontend\\src\\editprofile.css",
-              "ViewState": "AgIAADYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2026-01-22T03:25:52.861Z",
+              "WhenOpened": "2026-01-27T00:04:53.278Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "editeducatorprofile.css",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.css",
-              "RelativeDocumentMoniker": "frontend\\src\\editeducatorprofile.css",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.css",
-              "RelativeToolTip": "frontend\\src\\editeducatorprofile.css",
-              "ViewState": "AgIAAIMAAAAAAAAAAAAqwIkAAAAVAAAAAAAAAA==",
+              "Title": "educatoraccount.css",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.css",
+              "RelativeDocumentMoniker": "frontend\\src\\educatoraccount.css",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\educatoraccount.css",
+              "RelativeToolTip": "frontend\\src\\educatoraccount.css",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2026-01-22T03:25:50.519Z",
+              "WhenOpened": "2026-01-26T22:47:10.195Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "editeducatorprofile.jsx",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.jsx",
-              "RelativeDocumentMoniker": "frontend\\src\\editeducatorprofile.jsx",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\editeducatorprofile.jsx",
-              "RelativeToolTip": "frontend\\src\\editeducatorprofile.jsx",
-              "ViewState": "AgIAAFwAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 4,
+              "Title": "booking.css",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.css",
+              "RelativeDocumentMoniker": "frontend\\src\\booking.css",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.css",
+              "RelativeToolTip": "frontend\\src\\booking.css",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAFsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2026-01-26T21:48:03.399Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "booking.jsx",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\booking.jsx",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\booking.jsx",
+              "RelativeToolTip": "frontend\\src\\booking.jsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACcAAAALAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-22T03:25:48.829Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "server.js",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\server.js",
-              "RelativeDocumentMoniker": "backend\\server.js",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\server.js",
-              "RelativeToolTip": "backend\\server.js",
-              "ViewState": "AgIAADwAAAAAAAAAAAAAAEYAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
-              "WhenOpened": "2026-01-11T01:27:17.419Z",
+              "WhenOpened": "2026-01-26T21:47:54.392Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
-              "Title": "Tutors.jsx",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\Tutors.jsx",
-              "RelativeDocumentMoniker": "frontend\\src\\Tutors.jsx",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\Tutors.jsx",
-              "RelativeToolTip": "frontend\\src\\Tutors.jsx",
-              "ViewState": "AgIAAKMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
-              "WhenOpened": "2026-01-22T00:33:23.241Z"
+              "Title": "server.js",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\server.js",
+              "RelativeDocumentMoniker": "backend\\server.js",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\server.js",
+              "RelativeToolTip": "backend\\server.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2026-01-26T20:30:01.162Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "TutorProfile.js",
-              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\models\\TutorProfile.js",
-              "RelativeDocumentMoniker": "backend\\models\\TutorProfile.js",
-              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\models\\TutorProfile.js",
-              "RelativeToolTip": "backend\\models\\TutorProfile.js",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
-              "WhenOpened": "2026-01-15T01:32:09.778Z",
-              "EditorCaption": ""
+              "DocumentIndex": 8,
+              "Title": "account.jsx",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\account.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\account.jsx",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\account.jsx",
+              "RelativeToolTip": "frontend\\src\\account.jsx",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAlAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-01-15T01:14:55.419Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "App.jsx",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\App.jsx",
+              "RelativeDocumentMoniker": "frontend\\src\\App.jsx",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\frontend\\src\\App.jsx",
+              "RelativeToolTip": "frontend\\src\\App.jsx",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAxwCIAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003663|",
+              "WhenOpened": "2026-01-15T01:14:01.133Z"
             },
             {
               "$type": "Document",
@@ -145,6 +146,18 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAEAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
               "WhenOpened": "2026-01-11T02:18:12.949Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "package.json",
+              "DocumentMoniker": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\package.json",
+              "RelativeDocumentMoniker": "backend\\package.json",
+              "ToolTip": "C:\\Users\\willi\\Downloads\\CapstoneProject\\backend\\package.json",
+              "RelativeToolTip": "backend\\package.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-01-11T01:23:40.235Z"
             }
           ]
         }

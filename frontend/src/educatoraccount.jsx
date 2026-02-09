@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useMsal } from "@azure/msal-react";
 
 import "./educatoraccount.css";
-
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
