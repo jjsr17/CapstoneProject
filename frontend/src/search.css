@@ -1,7 +1,17 @@
-﻿body {
+﻿search.css
+
+body {
     margin: 0;
     font-family: "Times New Roman", serif;
     background-color: white;
+}
+
+.page-background {
+    min-height: 100vh;
+    background-image: url("./assets/mainmenu.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 header {
@@ -40,10 +50,13 @@ header {
     display: flex;
     align-items: center;
     gap: 15px;
+    width: 920px; 
+    max-width: 100%;
 }
 
     .search-container input {
-        width: 700px;
+        flex: 1 1 700px;
+        min-width: 0;
         padding: 12px;
         font-size: 18px;
         border-radius: 8px;
@@ -51,7 +64,7 @@ header {
     }
 
     .search-container select {
-        width: 220px;
+        flex: 0 0 220px;
         padding: 12px;
         font-size: 18px;
         border-radius: 8px;
@@ -68,7 +81,7 @@ header {
 }
 
 .subject-card {
-    background-color: white;
+    background-color: lavender;
     padding: 25px;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
@@ -88,7 +101,7 @@ header {
     }
 
     .subject-card p {
-        color: #666;
+        color: black;
         margin-top: 10px;
     }
 
@@ -97,30 +110,30 @@ header {
     margin: 12px 0;
     padding: 12px;
     border-radius: 8px;
-    background: #fafafa;
+    background: lavender;
     border: 1px solid #eee;
 }
 
 .empty-text {
     text-align: center;
-    color: #666;
+    color: black;
 }
+
 .availability-preview {
-  margin-top: 10px;
-  font-size: 0.95rem;
+    margin-top: 10px;
+    font-size: 0.95rem;
 }
 
-.availability-preview ul {
-  margin: 6px 0 0 18px;
-  padding: 0;
-}
+    .availability-preview ul {
+        margin: 6px 0 0 18px;
+        padding: 0;
+    }
 
-.availability-preview li {
-  margin: 4px 0;
-}
+    .availability-preview li {
+        margin: 4px 0;
+    }
 
 .muted {
-  opacity: 0.7;
-  font-size: 0.9rem;
+    opacity: 0.7;
+    font-size: 0.9rem;
 }
-    
