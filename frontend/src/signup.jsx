@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
+import LoginBG from "./assets/artbackground.jpeg";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
@@ -291,6 +293,11 @@ export default function SignUpMenu() {
           justify-content: center;
           align-items: center;
           min-height: 100vh;
+          background-image: url(${LoginBG});
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+
         }
         .signup-box {
           background-color: white;
