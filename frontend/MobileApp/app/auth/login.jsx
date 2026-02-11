@@ -146,7 +146,7 @@ export default function LoginScreen() {
       await saveMsTokens(accessToken);
       console.log("ACCESS TOKEN saved:", accessToken.slice(0, 25) + "…");
 
-      // ✅ Use GraphQL "me" like your web app
+      // ✅ Use GraphQL "me" like web app
       const gqlResp = await fetch(`${API_URL}/graphql`, {
         method: "POST",
         headers: {

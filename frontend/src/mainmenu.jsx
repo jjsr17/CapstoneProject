@@ -14,14 +14,13 @@ export default function MainMenu() {
 
     const [displayName, setDisplayName] = useState("");
 
-    //educatorId"
+    // educatorId -> name map
     const [educatorNames, setEducatorNames] = useState({});
 
     const loadLatestOfferings = useCallback(async () => {
         try {
             setLoading(true);
 
-            // Prefer env base
             const url = API_BASE ? `${API_BASE}/api/courses?limit=10` : `/api/courses?limit=10`;
 
             const res = await fetch(url, { credentials: "include" });
@@ -48,9 +47,65 @@ export default function MainMenu() {
         [navigate]
     );
 
+    //Welcome name display per mongoUserId
     useEffect(() => {
-        const name = localStorage.getItem("displayName");
-        if (name) setDisplayName(name);
+        const mongoUserId = localStorage.getItem("mongoUserId") || "";
+        const at = (localStorage.getItem("accountType") || "").trim().toLowerCase();
+
+        // If not logged in yet
+        if (!mongoUserId) {
+            setDisplayName("");
+            return;
+        }
+
+        const key = (baseKey) => `user:${mongoUserId}:${baseKey}`;
+
+        // Try to read per-user saved names first (matches your other pages)
+        const educatorFullName = (localStorage.getItem(key("educatorFullName")) || "").trim();
+
+        const studentFirst = (localStorage.getItem(key("profileFirstName")) || "").trim();
+        const studentLast = (localStorage.getItem(key("profileLastName")) || "").trim();
+        const studentFull = `${studentFirst} ${studentLast}`.trim();
+
+        // Pick based on account type, with sensible fallbacks
+        const localPicked =
+            at === "educator"
+                ? educatorFullName || studentFull
+                : studentFull || educatorFullName;
+
+        if (localPicked) {
+            setDisplayName(localPicked);
+            return;
+        }
+
+        // Fallback: ask backend for the user's real name (works even if localStorage is empty)
+        (async () => {
+            try {
+                const query = `
+          query ($id: ID!) {
+            userById(id: $id) {
+              _id
+              firstName
+              lastName
+            }
+          }
+        `;
+
+                const res = await fetch(GRAPHQL_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query, variables: { id: mongoUserId } }),
+                });
+
+                const json = await res.json();
+                const u = json?.data?.userById;
+                const name = u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() : "";
+                setDisplayName(name || "");
+            } catch (e) {
+                console.error("Failed to resolve displayName:", e);
+                setDisplayName("");
+            }
+        })();
     }, []);
 
     const openCard = useCallback((type) => {
@@ -64,8 +119,6 @@ export default function MainMenu() {
         [navigate]
     );
 
-    // student -> /account
-    // educator -> /educatoraccount
     const openAccount = useCallback(() => {
         const at = (localStorage.getItem("accountType") || "").trim().toLowerCase();
 
@@ -79,7 +132,6 @@ export default function MainMenu() {
             return;
         }
 
-        // fallback if missing/unknown
         navigate("/login");
     }, [navigate]);
 
@@ -87,7 +139,6 @@ export default function MainMenu() {
     function getEducatorIdFromCourse(c) {
         const v = c?.educatorId;
         if (!v) return "";
-        // in case mongoose populate ever returns object
         if (typeof v === "object") return v._id || "";
         return String(v);
     }
@@ -124,9 +175,7 @@ export default function MainMenu() {
     useEffect(() => {
         if (!offerings || offerings.length === 0) return;
 
-        const ids = Array.from(
-            new Set(offerings.map(getEducatorIdFromCourse).filter(Boolean))
-        );
+        const ids = Array.from(new Set(offerings.map(getEducatorIdFromCourse).filter(Boolean)));
 
         const missing = ids.filter((id) => educatorNames[id] == null);
         if (missing.length === 0) return;
@@ -143,12 +192,10 @@ export default function MainMenu() {
 
     return (
         <div className="page-background">
-            {/* Title */}
             <header>
                 <h1>Noesis</h1>
             </header>
 
-            {/* Navigation */}
             <nav>
                 <button onClick={() => goToPage("/mainmenu")}>Home</button>
                 <button onClick={() => goToPage("/search")}>Search</button>
@@ -156,7 +203,6 @@ export default function MainMenu() {
                 <button onClick={() => goToPage("/messages")}>Messages</button>
             </nav>
 
-            {/* Main Content */}
             <div className="container">
                 <p>
                     Welcome <strong>{displayName || "User"}</strong> to our website! Here you will find many
@@ -165,33 +211,45 @@ export default function MainMenu() {
 
                 <div className="card" onClick={() => openCard("news")}>
                     <h2>Latest News</h2>
-                    <p>Click to view the latest updates.</p>
+                    <p>
+                        <strong>Update Patch Notes Ver. 0.8.2:</strong>
+                        <br /><br />
+
+                        <strong>New Features:</strong>
+                        <br />
+                        - Teams integration added to messages
+                        <br />
+                        - Professor ID appears in Course Offering components
+                        <br /><br />
+
+                        <strong>Improvements:</strong>
+                        <br />
+                        - UI design is cleaner and lively
+                        <br /><br />
+
+                        <strong>Bug Fixes:</strong>
+                        <br />
+                        - Welcome ID displayed incorrectly
+                        <br />
+                        - Search filtering was not filtering every subject
+                        <br />
+                        - Profile changes are local to 1 account
+                    </p>
                 </div>
 
                 <div className="card" onClick={() => openCard("info")}>
                     <h2>Information</h2>
                     <p>
-                        The Freelance Tutoring Platform is a web-based academic support system designed to connect
-                        students with qualified tutors and professors through a secure, user-friendly digital
-                        environment. The website serves as the central access point for users to register, manage
-                        profiles, search for tutoring services, schedule sessions, and communicate in real time.
-                        Its primary goal is to facilitate structured, reliable, and accessible tutoring services
-                        for learners at various educational levels. The website provides an intuitive interface
-                        that allows students to search for tutors based on subject, availability, and
-                        qualifications, while tutors can manage their profiles, schedules, and sessions
-                        efficiently. Core features include user authentication, role-based access control, session
-                        scheduling, integrated messaging, and payment processing. The platform is designed to
-                        support live tutoring sessions through Microsoft Teams integration, enabling video
-                        conferencing, calendar synchronization, and real-time communication within a unified
-                        system. From a technical perspective, the website follows a modern web architecture,
-                        utilizing a React-based frontend, a Node.js and Express backend, and a MongoDB database
-                        for data management. Security and reliability are central to the system design, with
-                        secure authentication mechanisms, encrypted communication, and structured database schemas
-                        to ensure data integrity and user privacy.
+                        Noesis is a tutoring platform and a secure web-based system that connects students with qualified tutors and professors.
+                        <br />
+                        It provides an intuitive environment for discovering tutoring services, scheduling sessions, and communicating in real time.
+                        <br />
+                        Designed for reliability and ease of use, the platform supports structured academic assistance across multiple subjects while
+                        <br />
+                        ensuring data security and user privacy. The platform also provides a mobile version for quick on the go use and learning.
                     </p>
                 </div>
 
-                {/* Latest Offerings */}
                 <div className="card">
                     <h2>Latest Course Offerings</h2>
 
@@ -208,7 +266,6 @@ export default function MainMenu() {
                                 <div className="offering-card" key={c._id}>
                                     <strong>{c.courseName}</strong> — {c.subject}
 
-                                    {/* Show educator name */}
                                     <div style={{ marginTop: "6px", fontSize: "14px", color: "#555" }}>
                                         <strong>Educator:</strong> {educatorName || "Loading..."}
                                     </div>

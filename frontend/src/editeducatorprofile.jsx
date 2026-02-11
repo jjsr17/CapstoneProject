@@ -26,13 +26,25 @@ export default function EditEducatorProfile() {
         });
     }, [userId, k]);
 
-    const [bannerSrc, setBannerSrc] = useState(() => (userId ? localStorage.getItem(k(BASE.banner)) || "" : ""));
-    const [profileSrc, setProfileSrc] = useState(() => (userId ? localStorage.getItem(k(BASE.profile)) || "" : ""));
+    const [bannerSrc, setBannerSrc] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.banner)) || "" : ""
+    );
+    const [profileSrc, setProfileSrc] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.profile)) || "" : ""
+    );
 
-    const [fullName, setFullName] = useState(() => (userId ? localStorage.getItem(k(BASE.fullName)) || "" : ""));
-    const [degree, setDegree] = useState(() => (userId ? localStorage.getItem(k(BASE.degree)) || "Bachelor" : "Bachelor"));
-    const [concentration, setConcentration] = useState(() => (userId ? localStorage.getItem(k(BASE.concentration)) || "" : ""));
-    const [about, setAbout] = useState(() => (userId ? localStorage.getItem(k(BASE.about)) || "" : ""));
+    const [fullName, setFullName] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.fullName)) || "" : ""
+    );
+    const [degree, setDegree] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.degree)) || "Bachelor" : "Bachelor"
+    );
+    const [concentration, setConcentration] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.concentration)) || "" : ""
+    );
+    const [about, setAbout] = useState(() =>
+        userId ? localStorage.getItem(k(BASE.about)) || "" : ""
+    );
 
     const goBack = useCallback(() => {
         window.location.href = "/educatoraccount";
@@ -101,6 +113,7 @@ export default function EditEducatorProfile() {
                 <div className="eep-title">Noesis</div>
             </div>
 
+            {/* Banner */}
             <div className="eep-banner">
                 {bannerSrc ? <img className="eep-banner-img" src={bannerSrc} alt="" /> : null}
 
@@ -114,10 +127,8 @@ export default function EditEducatorProfile() {
                 <label className="eep-banner-label" htmlFor="eepBannerUpload">
                     Change Banner
                 </label>
-            </div>
 
-            <div className="eep-profile-wrap">
-                <div className="eep-profile-area">
+                <div className="eep-profile-area eep-profile-area--inbanner">
                     <div className="eep-avatar">
                         <img src={profileSrc || ""} alt="" />
                     </div>
@@ -128,6 +139,8 @@ export default function EditEducatorProfile() {
                     </label>
                 </div>
             </div>
+
+            <div className="eep-banner-spacer" />
 
             <div className="eep-form">
                 <div className="eep-section">
@@ -152,7 +165,10 @@ export default function EditEducatorProfile() {
                     <div className="eep-row single">
                         <div className="eep-group">
                             <label>Concentration</label>
-                            <input value={concentration} onChange={(e) => setConcentration(e.target.value)} />
+                            <input
+                                value={concentration}
+                                onChange={(e) => setConcentration(e.target.value)}
+                            />
                         </div>
                     </div>
                 </div>
