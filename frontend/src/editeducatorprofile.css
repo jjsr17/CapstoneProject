@@ -1,62 +1,82 @@
-body {
-    margin: 0;
-    font-family: "Times New Roman", serif;
+/* Page base */
+.eep-page {
     background-color: #f4f4f4;
+    min-height: 100vh;
+    font-family: "Times New Roman", serif;
 }
 
-/* Top Bar */
-.top-bar {
+/* Top bar */
+.eep-topbar {
     display: flex;
     align-items: center;
     padding: 12px 20px;
     background-color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     position: relative;
-    z-index: 10;
+    z-index: 50;
 }
 
-.site-title {
+.eep-back {
+    margin-right: 15px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.eep-title {
     font-size: 26px;
     color: blueviolet;
     flex-grow: 1;
 }
 
-.back-btn {
-    padding: 6px 12px;
-    cursor: pointer;
-}
-
 /* Banner */
-.banner {
+.eep-banner {
+    position: relative;
     height: 220px;
     background-color: #d9d9d9;
-    position: relative;
+    overflow: visible;
+    isolation: isolate;
+}
+.eep-banner-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+    pointer-events: none;
 }
 
-    .banner input {
-        display: none;
-    }
-
-    .banner label {
-        position: absolute;
-        bottom: 20px;
-        right: 20px;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-
-/* Profile Image Area */
-.profile-area {
-    position: relative;
-    padding-left: 40px;
-    margin-top: -60px;
-    z-index: 5;
+.eep-banner-input {
+    display: none;
 }
 
-.profile-pic {
+.eep-banner-label {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    z-index: 10; 
+    pointer-events: auto;
+    user-select: none;
+}
+
+.eep-profile-area--inbanner {
+    position: absolute;
+    left: 40px;
+    bottom: -60px; 
+    z-index: 5; 
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 220px;
+}
+
+.eep-avatar {
     width: 120px;
     height: 120px;
     border-radius: 50%;
@@ -65,14 +85,14 @@ body {
     background-color: #eee;
 }
 
-    .profile-pic img {
+    .eep-avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
 
 /* Profile upload button */
-.profile-upload {
+.eep-upload {
     margin-top: 8px;
     font-size: 14px;
     background-color: #333;
@@ -83,17 +103,21 @@ body {
     display: inline-block;
 }
 
-    .profile-upload input {
+    .eep-upload input {
         display: none;
     }
 
+.eep-banner-spacer {
+    height: 70px;
+}
+
 /* Form */
-.form-container {
+.eep-form {
     padding: 40px;
     max-width: 900px;
 }
 
-.section {
+.eep-section {
     background: white;
     padding: 20px;
     border-radius: 12px;
@@ -101,62 +125,67 @@ body {
     margin-bottom: 25px;
 }
 
-.row {
+.eep-row {
     display: flex;
     gap: 20px;
     margin-bottom: 15px;
 }
 
-    .row.single {
+    .eep-row.single {
         justify-content: center;
     }
 
-.input-group {
+.eep-group {
     width: 100%;
     box-sizing: border-box;
 }
 
-.row.single .input-group {
+.eep-row.single .eep-group {
     max-width: 95%;
 }
 
-.input-group label {
+.eep-group label {
     display: block;
     margin-bottom: 5px;
 }
 
-.input-group input,
-.input-group textarea,
-.input-group select {
+.eep-group input,
+.eep-group select,
+.eep-section textarea {
     width: 100%;
     padding: 10px;
     border-radius: 6px;
     border: 1px solid #ccc;
+    background: #fff;
+    color: #000;
+    box-sizing: border-box;
+    font-size: 15px;
 }
 
-textarea {
+.eep-section textarea {
     min-height: 80px;
 }
 
 /* Buttons */
-.button-row {
+.eep-actions {
     display: flex;
     justify-content: space-between;
 }
 
-.btn {
+.eep-btn {
     width: 48%;
     padding: 12px;
     cursor: pointer;
     border: none;
     border-radius: 6px;
+    font-size: 16px;
 }
 
-.btn-cancel {
+.eep-cancel {
     background: #e6e6e6;
 }
 
-.btn-save {
+.eep-save {
     background: blue;
     color: white;
 }

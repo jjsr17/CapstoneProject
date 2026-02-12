@@ -13,6 +13,8 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const HOME_ROUTE = "/home"; // <-- change to "/(tabs)/home" if your home is under a group
+
 function formatDateTimeRange(startISO, endISO) {
   const start = new Date(startISO);
   const end = new Date(endISO);
@@ -30,7 +32,7 @@ function formatDateTimeRange(startISO, endISO) {
 }
 
 export default function BookingScreen() {
-  const { id } = useLocalSearchParams(); // <-- /booking?id=...
+  const { id } = useLocalSearchParams(); // /booking?id=...
   const courseId = typeof id === "string" ? id : Array.isArray(id) ? id[0] : null;
 
   const [course, setCourse] = useState(null);
@@ -39,13 +41,6 @@ export default function BookingScreen() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
 
-  async function getGraphToken() {
-  return Platform.OS === "web"
-    ? localStorage.getItem("msGraphAccessToken") || localStorage.getItem("msAccessToken")
-    : AsyncStorage.getItem("msGraphAccessToken");
-}
-
-  // ✅ same backend base approach as other screens
   const API_BASE = useMemo(() => {
     const API_WEB = "http://localhost:5000";
     const API_DEVICE = "http://192.168.4.30:5000";
@@ -66,8 +61,17 @@ export default function BookingScreen() {
     return (raw || "").trim().toLowerCase();
   }
 
+  function goHomeNow() {
+    // Most reliable “get me to home”
+    try {
+      router.dismissAll?.();
+    } catch {}
+    router.replace(HOME_ROUTE);
+  }
+
   function goBack() {
-    router.back();
+    // You said you want back to go home from booking
+    goHomeNow();
   }
 
   async function loadCourseAndSlots() {
@@ -80,13 +84,11 @@ export default function BookingScreen() {
     try {
       setLoading(true);
 
-      // 1) Load course
       const courseRes = await fetch(`${API_BASE}/api/courses/${courseId}`);
       if (!courseRes.ok) throw new Error("Failed to load course");
       const courseData = await courseRes.json();
       setCourse(courseData);
 
-      // 2) Load computed 60-min slots
       const slotsRes = await fetch(
         `${API_BASE}/api/courses/${courseId}/available-slots?daysAhead=14`
       );
@@ -132,7 +134,7 @@ export default function BookingScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentId,
-          tutorId: course.educatorId, // ✅ same as web: educatorId is tutor
+          tutorId: course.educatorId,
           start: selectedSlot.start,
           end: selectedSlot.end,
         }),
@@ -158,15 +160,12 @@ export default function BookingScreen() {
         return;
       }
 
-    Alert.alert("Success", "Session booked successfully!", [
-    {
-        text: "OK",
-        onPress: () => router.replace("/home"),
-    },
-    ]);
-    await AsyncStorage.setItem("redirectHome", "true");
+      // ✅ Don’t rely on Alert button callbacks for navigation.
+      // Navigate immediately.
+      goHomeNow();
 
-
+      // Optional: show message (fine if it doesn’t show due to navigation timing)
+      Alert.alert("Success", "Session booked successfully!");
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Failed to book session.");
@@ -180,7 +179,6 @@ export default function BookingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
-  // group slots by date (same idea as web)
   const slotsByDate = useMemo(() => {
     const groups = new Map();
     for (const s of availableSlots) {
@@ -188,12 +186,11 @@ export default function BookingScreen() {
       if (!groups.has(date)) groups.set(date, []);
       groups.get(date).push(s);
     }
-    return Array.from(groups.entries()); // [ [date, slots], ... ]
+    return Array.from(groups.entries());
   }, [availableSlots]);
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Top bar */}
       <View style={styles.topBar}>
         <Pressable onPress={goBack} style={styles.backBtn}>
           <Text style={styles.backText}>← Back</Text>
@@ -215,9 +212,9 @@ export default function BookingScreen() {
             <>
               <Text style={styles.h2}>{course.courseName}</Text>
               <Text style={styles.meta}>
-                {course.subject} ·{" "}
-                {course.type === "tutoring" ? "Course Tutoring" : "Course Discussion"}
+                {course.subject} · {course.type === "tutoring" ? "Course Tutoring" : "Course Discussion"}
               </Text>
+
               {!!course.description && <Text style={styles.desc}>{course.description}</Text>}
 
               <Text style={styles.h3}>Available Sessions (60 min)</Text>
@@ -259,9 +256,7 @@ export default function BookingScreen() {
                   disabled={booking}
                   style={[styles.bookBtn, booking && { opacity: 0.6 }]}
                 >
-                  <Text style={styles.bookBtnText}>
-                    {booking ? "Booking..." : "Book Session"}
-                  </Text>
+                  <Text style={styles.bookBtnText}>{booking ? "Booking..." : "Book Session"}</Text>
                 </Pressable>
               )}
             </>
@@ -284,7 +279,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  backBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: "#f4f4f4" },
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#f4f4f4",
+  },
   backText: { fontSize: 14 },
   siteTitle: { fontSize: 18, fontWeight: "800" },
 

@@ -153,7 +153,7 @@ export default function LoginScreen() {
       await saveMsTokens(accessToken);
       console.log("ACCESS TOKEN saved:", accessToken.slice(0, 25) + "…");
 
-      // ✅ Use GraphQL "me" like your web app
+      // ✅ Use GraphQL "me" like web app
       const gqlResp = await fetch(`${API_URL}/graphql`, {
         method: "POST",
         headers: {
@@ -236,7 +236,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Noesis</Text>
 
       <FormInput
         style={styles.input}
