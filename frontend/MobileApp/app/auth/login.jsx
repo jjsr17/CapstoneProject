@@ -1,37 +1,19 @@
-<<<<<<< HEAD
-// app/auth/login.jsx
-import React, { useState, useCallback } from "react";
-=======
 // MobileApp/app/auth/login.jsx
 import React, { useCallback, useState } from "react";
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
 import { View, Text, TextInput, Button, StyleSheet, Alert, Platform } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-
-
 WebBrowser.maybeCompleteAuthSession();
 
-// Microsoft OAuth config
 const tenantId = "03f750b3-6ffc-46b7-8ea9-dd6d95a85164";
 const clientId = "b8a0b68a-5858-4d1c-a0c3-9d52db4696de";
 
-<<<<<<< HEAD
-// Backend URLs
-const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.4.30:5000"; // <-- your desktop LAN IP
-const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
-
-// Helper to save logged-in user
-async function saveAuth(user) {
-  const mongoUserId = user?._id ? String(user._id) : "";
-  const accountType = user?.accountType ? String(user.accountType) : "";
-=======
 // ✅ Backend base (no /graphql here)
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.22:5000"; // ✅ match your working LAN IP
+const API_DEVICE = "http://192.168.4.30:5000"; // ✅ match your working LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 // ✅ Keep keys consistent with Messages + web app
@@ -51,7 +33,6 @@ async function saveAuth(user) {
   const accountType = user?.accountType ? String(user.accountType) : "";
   const profileComplete = String(!!user?.profileComplete);
 
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
   if (!mongoUserId) return;
 
   if (Platform.OS === "web") {
@@ -89,6 +70,13 @@ async function saveMsTokens(accessToken) {
   }
 }
 
+const FormInput = ({style, ...props}) => {
+  return (
+      <TextInput style = {[styles.input, style]} placeholderTextColor="#888" {...props}
+      />
+  );
+};
+
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -97,11 +85,7 @@ export default function LoginScreen() {
     `https://login.microsoftonline.com/${tenantId}/v2.0`
   );
 
-<<<<<<< HEAD
-  // Microsoft login
-=======
   // ✅ Microsoft login: AUTH CODE (PKCE) -> exchange for access token -> call GraphQL me
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
   const loginWithMicrosoft = useCallback(async () => {
     try {
       if (!discovery) {
@@ -109,27 +93,15 @@ export default function LoginScreen() {
         return;
       }
 
-<<<<<<< HEAD
-      const redirectUri = AuthSession.makeRedirectUri({
-        useProxy: Platform.OS !== "web",
-        projectNameForProxy: "@c4refree/MobileApp",
-=======
       const projectNameForProxy = "@jjsr17/MobileApp";
 
       const redirectUri = AuthSession.makeRedirectUri({
         useProxy: Platform.OS !== "web",
         projectNameForProxy,
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
       });
 
       const req = new AuthSession.AuthRequest({
         clientId,
-<<<<<<< HEAD
-        scopes: ["openid", "profile", "email"],
-        redirectUri,
-        responseType: AuthSession.ResponseType.IdToken,
-        extraParams: { nonce: "nonce" },
-=======
         redirectUri,
         responseType: AuthSession.ResponseType.Code,
         scopes: [
@@ -141,37 +113,12 @@ export default function LoginScreen() {
           "https://graph.microsoft.com/User.Read",
           "https://graph.microsoft.com/Chat.ReadWrite",
         ],
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
       });
 
       const result = await req.promptAsync(discovery, {
         useProxy: Platform.OS !== "web",
       });
 
-<<<<<<< HEAD
-      const idToken = result.params?.id_token;
-      if (!idToken) {
-        Alert.alert("Error", "No id_token returned.");
-        return;
-      }
-
-      const resp = await fetch(`${API_URL}/auth/ms-login`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${idToken}`, "Content-Type": "application/json" },
-      });
-
-      const text = await resp.text();
-      let data = {};
-      try { data = JSON.parse(text); } catch { data = { message: text }; }
-
-      if (!resp.ok) {
-        Alert.alert("Login failed", data?.message ?? "Server error");
-        return;
-      }
-
-      await saveAuth(data.user);
-      router.replace("/postlogin");
-=======
       console.log("AUTH RESULT:", result);
 
       if (result.type !== "success") {
@@ -242,46 +189,20 @@ export default function LoginScreen() {
       }
 
       router.replace("/auth/signup");
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
     } catch (err) {
       console.error(err);
       Alert.alert("Login error", err?.message ?? "Something went wrong.");
     }
   }, [discovery]);
 
-<<<<<<< HEAD
-  // Username/password login
-  const handleLogin = async () => {
-=======
   // ✅ Local username/password login (kept)
   const handleLogin = useCallback(async () => {
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
     try {
       if (!username || !password) {
         Alert.alert("Error", "Please enter username and password");
         return;
       }
 
-<<<<<<< HEAD
-      const resp = await fetch(`${API_URL}/api/users/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await resp.json();
-      if (!resp.ok) {
-        Alert.alert("Login failed", data?.message ?? "Server error");
-        return;
-      }
-
-      await saveAuth(data.user);
-      router.replace("/home");
-    } catch (e) {
-      Alert.alert("Login error", String(e?.message ?? e));
-    }
-  };
-=======
       // local mode
       if (Platform.OS === "web") {
         localStorage.setItem(KS.useMsSso, "false");
@@ -312,20 +233,20 @@ export default function LoginScreen() {
       Alert.alert("Login error", String(e?.message ?? e));
     }
   }, [username, password]);
->>>>>>> f7baf068575c8860151771b2a2308900a812a2a2
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
 
-      <TextInput
+      <FormInput
         style={styles.input}
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
       />
-      <TextInput
+
+      <FormInput
         style={styles.input}
         placeholder="Password"
         value={password}
@@ -363,6 +284,16 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", padding: 30, backgroundColor: "#f5f5f5" },
   title: { fontSize: 32, fontWeight: "bold", marginBottom: 40, textAlign: "center", color: "#333" },
-  input: { borderWidth: 1, borderColor: "#999", borderRadius: 8, padding: 12, marginBottom: 20 },
+  input: {
+  borderWidth: 1,
+  borderColor: "#bbb",
+  borderRadius: 10,
+  padding: 12,
+  marginTop: 8,
+  backgroundColor: "#ffffff",
+  color: "#111", // typed text color
+  fontSize: 15,
+},
+
   footerText: { marginTop: 20, textAlign: "center", color: "#666" },
 });
