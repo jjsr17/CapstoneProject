@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.4.30:5000";
+const API_DEVICE = "http://192.168.4.28:5000";
 const API_BASE = Platform.OS === "web" ? API_WEB : API_DEVICE;
 const GRAPHQL_URL = `${API_BASE}/graphql`;
 

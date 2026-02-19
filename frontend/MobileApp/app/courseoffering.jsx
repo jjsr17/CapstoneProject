@@ -15,7 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.4.30:5000";
+const API_DEVICE = "http://192.168.4.28:5000";
 const API_BASE = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -31,6 +31,20 @@ const emptyAvailability = () => ({
   mode: "Online",
   location: "",
 });
+
+const sanitizeHour = (value) => {
+  // remove non-digits
+  const digits = value.replace(/[^0-9]/g, "");
+
+  if (!digits) return "";
+
+  const num = parseInt(digits, 10);
+
+  if (num < 1) return "1";
+  if (num > 12) return "12";
+
+  return String(num);
+};
 
 const trimStr = (v) => (typeof v === "string" ? v.trim() : "");
 
@@ -373,9 +387,10 @@ export default function CourseOfferingScreen() {
                   <TextInput
                     style={styles.input}
                     value={a.start}
-                    onChangeText={(v) => updateAvailability(i, "start", v)}
+                    onChangeText={(v) => updateAvailability(i, "start", sanitizeHour(v))}
                     placeholder="12"
                     keyboardType="numeric"
+                    maxLength={2}
                   />
                   <View style={styles.row}>
                     {AMPM.map((ap) => (
@@ -403,12 +418,13 @@ export default function CourseOfferingScreen() {
                 <View style={styles.timeBox}>
                   <Text style={styles.timeLabel}>End</Text>
                   <TextInput
-                    style={styles.input}
-                    value={a.end}
-                    onChangeText={(v) => updateAvailability(i, "end", v)}
-                    placeholder="3"
-                    keyboardType="numeric"
-                  />
+                   style={styles.input}
+                   value={a.end}
+                   onChangeText={(v) => updateAvailability(i, "end", sanitizeHour(v))}
+                   placeholder="3"
+                   keyboardType="numeric"maxLength={2}
+                   />
+
                   <View style={styles.row}>
                     {AMPM.map((ap) => (
                       <Pressable

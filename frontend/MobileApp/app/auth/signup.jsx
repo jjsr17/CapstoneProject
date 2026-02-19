@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /** --------- API BASE --------- **/
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.4.30:5000"; // your LAN IP
+const API_DEVICE = "http://192.168.4.28:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 /** --------- Paths --------- **/
@@ -466,7 +466,22 @@ router.replace("/auth/login");
         onChangeText={setGender}
         editable={!loading}
       />
-      <FormInput style={styles.input} placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" editable={!loading} />
+      <FormInput style={styles.input} placeholder="Age" value={age} onChangeText={(v) => {
+           const digitsOnly = v.replace(/[^0-9]/g, "");
+            if (digitsOnly === "") {
+            setAge("");
+            return;
+            }
+            const num = Number(digitsOnly);
+              if (num <= 120) {
+              setAge(String(num));
+            }
+  }}
+            keyboardType="numeric"
+            maxLength={3}
+            editable={!loading}
+/>
+
       <FormInput style={styles.input} placeholder="Birth Date (MM/DD/YYYY)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
 
       <Text style={styles.section}>Address (optional)</Text>

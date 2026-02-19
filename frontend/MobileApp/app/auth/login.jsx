@@ -13,7 +13,7 @@ const clientId = "b8a0b68a-5858-4d1c-a0c3-9d52db4696de";
 
 // ✅ Backend base (no /graphql here)
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.4.30:5000"; // ✅ match your working LAN IP
+const API_DEVICE = "http://192.168.4.28:5000"; // ✅ match your working LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 // ✅ Keep keys consistent with Messages + web app
