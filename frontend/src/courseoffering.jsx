@@ -18,6 +18,30 @@ function trimStr(v) {
     return typeof v === "string" ? v.trim() : "";
 }
 
+// ✅ Allow only digits + ":" while typing/pasting
+function sanitizeTimeInput(value) {
+    // remove anything that's not a digit or colon
+    let v = String(value || "").replace(/[^0-9:]/g, "");
+
+    // allow only ONE colon
+    const firstColon = v.indexOf(":");
+    if (firstColon !== -1) {
+        v =
+            v.slice(0, firstColon + 1) +
+            v.slice(firstColon + 1).replace(/:/g, "");
+    }
+
+    // limit length to "HH:MM" max 5 chars
+    if (v.length > 5) v = v.slice(0, 5);
+
+    return v;
+}
+
+// ✅ Strict final validation format: 00:00 to 23:59
+function isValidHHMM(value) {
+    return /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(value || "").trim());
+}
+
 export default function CourseOffering() {
     // ===== Subjects (Mongo via REST) =====
     const [subjects, setSubjects] = useState([]);
@@ -130,6 +154,11 @@ export default function CourseOffering() {
             if (!a.days?.length) return `Availability #${i + 1}: pick at least one day.`;
             if (!trimStr(a.start) || !trimStr(a.end))
                 return `Availability #${i + 1}: start and end time are required.`;
+
+            // ✅ prevent scheduling errors by enforcing HH:MM (24-hour)
+            if (!isValidHHMM(a.start) || !isValidHHMM(a.end)) {
+                return `Availability #${i + 1}: time must be in HH:MM (24-hour), e.g., 09:30 or 14:00.`;
+            }
 
             if (a.mode === "IRL" && !trimStr(a.location))
                 return `Availability #${i + 1}: location is required for IRL.`;
@@ -317,10 +346,20 @@ export default function CourseOffering() {
                                 <div className="time-group">
                                     <input
                                         className="time-input"
-                                        placeholder="Start"
+                                        placeholder="Start (HH:MM)"
                                         value={a.start}
-                                        onChange={(e) => updateAvailability(i, "start", e.target.value)}
+                                        inputMode="numeric"
+                                        pattern="[0-9:]*"
+                                        onChange={(e) =>
+                                            updateAvailability(i, "start", sanitizeTimeInput(e.target.value))
+                                        }
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pasted = e.clipboardData.getData("text");
+                                            updateAvailability(i, "start", sanitizeTimeInput(pasted));
+                                        }}
                                     />
+
                                     <select
                                         className="ampm-select"
                                         value={a.startAMPM}
@@ -334,10 +373,20 @@ export default function CourseOffering() {
 
                                     <input
                                         className="time-input"
-                                        placeholder="End"
+                                        placeholder="End (HH:MM)"
                                         value={a.end}
-                                        onChange={(e) => updateAvailability(i, "end", e.target.value)}
+                                        inputMode="numeric"
+                                        pattern="[0-9:]*"
+                                        onChange={(e) =>
+                                            updateAvailability(i, "end", sanitizeTimeInput(e.target.value))
+                                        }
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pasted = e.clipboardData.getData("text");
+                                            updateAvailability(i, "end", sanitizeTimeInput(pasted));
+                                        }}
                                     />
+
                                     <select
                                         className="ampm-select"
                                         value={a.endAMPM}
