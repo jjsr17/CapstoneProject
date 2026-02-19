@@ -56,21 +56,21 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",   // ✅ same as before
-    padding: 20,               // 👈 was 30 (slightly smaller so it fits)
+    justifyContent: "center",  
+    padding: 20,              
     backgroundColor: "#fff",
   },
   title: {
     fontSize: 26,
     textAlign: "center",
-    marginBottom: 28,          // 👈 was 40
+    marginBottom: 28,         
     fontWeight: "600",
   },
   button: {
     borderWidth: 2,
     borderColor: "#000",
-    paddingVertical: 14,       // 👈 was 18
-    marginBottom: 14,          // 👈 was 20
+    paddingVertical: 14,       
+    marginBottom: 14,       
     alignItems: "center",
   },
   buttonText: {
@@ -78,6 +78,5 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   logoutButton: {
-    marginTop: 18,             // 👈 was 30
   },
 });
