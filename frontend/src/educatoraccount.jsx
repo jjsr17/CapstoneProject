@@ -7,6 +7,10 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const GRAPHQL_URL = API_BASE ? `${API_BASE}/graphql` : "/graphql";
+
+
 const BASE = {
     banner: "educatorBannerImage",
     profile: "educatorProfileImage",
@@ -163,10 +167,11 @@ export default function EducatorAccount() {
           }
         `;
 
-                const res = await fetch("http://localhost:5000/graphql", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query, variables: { id: tutorId } }),
+         const res = await fetch(GRAPHQL_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ query, variables: { id: mongoUserId } }),
                 });
 
                 const json = await res.json();

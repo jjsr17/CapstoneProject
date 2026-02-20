@@ -5,7 +5,7 @@ const { DateTime } = require("luxon");
 const Booking = require("../models/Booking");
 const User = require("../models/User");
 const { createTeamsMeetingEvent } = require("../services/teamsMeetings");
-const timeZone = "SA Western Standard Time";
+const { sendTutorBookingEmail } = require("../services/msMail");
 
 const router = express.Router();
 
@@ -149,13 +149,10 @@ if (picked) {
 
     // Invite BOTH parties (organizer can also be included; it's fine either way)
 
-   const attendeeEmails = [
-  tutor?.msUpn || tutor?.user_email,
+ const attendeeEmails = [
   student?.msUpn || student?.user_email,
 ].filter(Boolean);
 
-// optional: avoid inviting the organizer twice if organizer is the email
-// (not required, but nice)
 const uniqueAttendees = Array.from(new Set(attendeeEmails));
 
 const meeting = await createTeamsMeetingEvent({
@@ -168,7 +165,30 @@ const meeting = await createTeamsMeetingEvent({
   bodyHtml: "Tutoring session created from the Noesis web app.",
 });
 console.log("✅ Created Graph event:", meeting);
+// Send tutor notification email (reliable)
+try {
+  const tutorEmail = tutor?.msUpn || tutor?.user_email;
+  const studentEmail = student?.msUpn || student?.user_email;
 
+  if (tutorEmail) {
+    const when = `${startLocal} → ${endLocal} (${timeZone})`;
+    const join = meeting?.joinUrl ? `<p><a href="${meeting.joinUrl}">Join Teams meeting</a></p>` : "";
+
+    await sendTutorBookingEmail({
+      fromUpn: organizer, // send from organizer mailbox
+      toEmail: tutorEmail,
+      subject: "New Noesis Booking",
+      html: `
+        <h3>You have a new booking</h3>
+        <p><b>Student:</b> ${student?.firstName || ""} ${student?.lastName || ""} (${studentEmail || "n/a"})</p>
+        <p><b>When:</b> ${when}</p>
+        ${join}
+      `,
+    });
+  }
+} catch (mailErr) {
+  console.error("Tutor email failed:", mailErr?.message || mailErr);
+}
 
     await Booking.findByIdAndUpdate(
       booking._id,

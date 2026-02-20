@@ -54,15 +54,24 @@ export default function Search() {
     }
 
     function formatSlot(slot) {
-        const days = Array.isArray(slot.days) ? slot.days.join(", ") : "";
-        const time = `${slot.start} ${slot.startAMPM} – ${slot.end} ${slot.endAMPM}`;
-        const mode =
-            slot.mode === "IRL"
-                ? `In Person${slot.location ? ` · ${slot.location}` : ""}`
-                : "Online";
+  const days = Array.isArray(slot.days) ? slot.days.join(", ") : "";
 
-        return `${days} · ${time} · ${mode}`;
-    }
+  // ✅ support BOTH old + new field names
+  const startTime = slot.startTime ?? slot.start ?? "";
+  const endTime = slot.endTime ?? slot.end ?? "";
+  const startAmPm = (slot.startAmPm ?? slot.startAMPM ?? "").trim();
+  const endAmPm = (slot.endAmPm ?? slot.endAMPM ?? "").trim();
+
+  // If you stored 24-hour times (like "18:00"), AM/PM is optional.
+  const time = `${startTime}${startAmPm ? ` ${startAmPm}` : ""} – ${endTime}${endAmPm ? ` ${endAmPm}` : ""}`;
+
+  const mode =
+    slot.mode === "IRL"
+      ? `In Person${slot.location ? ` · ${slot.location}` : ""}`
+      : "Online";
+
+  return `${days} · ${time} · ${mode}`;
+}
 
     //ducator name resolve helpers
     function getEducatorIdFromCourse(c) {

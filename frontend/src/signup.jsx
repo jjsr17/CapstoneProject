@@ -54,17 +54,23 @@ function sanitizeDigits(value) {
     return String(value || "").replace(/[^\d]/g, "");
 }
 
+function formatUsPhone(digits) {
+  const d = String(digits || "").replace(/\D/g, "").slice(0, 10);
+
+  const a = d.slice(0, 3);
+  const b = d.slice(3, 6);
+  const c = d.slice(6, 10);
+
+  if (d.length === 0) return "";
+  if (d.length < 4) return `(${a}`;
+  if (d.length < 7) return `(${a}) ${b}`;
+  return `(${a}) ${b}-${c}`;
+}
+
 function sanitizePhone(value) {
-    // digits + + ( ) - and spaces
-    // also enforces only ONE leading "+" if present anywhere
-    let v = String(value || "").replace(/[^\d+\-()\s]/g, "");
-    // if there are multiple '+' or '+' not at start, normalize to one at start
-    const plusCount = (v.match(/\+/g) || []).length;
-    if (plusCount > 0) {
-        v = v.replace(/\+/g, "");
-        v = "+" + v;
-    }
-    return v;
+  // ✅ keep ONLY digits, limit to 10, and format
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 10);
+  return formatUsPhone(digits);
 }
 
 function isValidEmailDomain(value) {
@@ -195,7 +201,11 @@ export default function SignUpMenu() {
             if (!password) return alert("Please enter a password.");
             if (password !== confirmPassword) return alert("Passwords do not match.");
         }
-
+        
+        const phoneDigits = phone.replace(/\D/g, "");
+        if (phoneDigits.length !== 10) {
+        return alert("Phone number must be exactly 10 digits.");
+        }
         const payload = {
             firstName,
             middleName,
@@ -246,11 +256,21 @@ export default function SignUpMenu() {
             // ✅ Only attach auth header when MS token exists
             if (isMsMode && hasMsToken) headers.Authorization = `Bearer ${msToken}`;
 
-            const res = await fetch(url, {
+           const res = await fetch(url, {
                 method: "POST",
                 headers,
+                credentials: "include",
                 body: JSON.stringify(payload),
-            });
+                });
+                
+             const raw = await res.text();
+            let respData = null;
+            try { respData = raw ? JSON.parse(raw) : null; } catch {}
+
+            if (!res.ok) {
+            alert(respData?.message || raw || "Signup failed");
+            return;
+            }
 
             if (isMsMode && hasMsToken) {
                 const resp = await completeProfileMutation({
@@ -284,27 +304,29 @@ export default function SignUpMenu() {
                     user.accountType === "educator" ? "/educatoraccount" : "/mainmenu";
                 return;
             }
+            
+          
 
-            const raw = await res.text();
-            let respData = null;
-            try {
-                respData = raw ? JSON.parse(raw) : null;
-            } catch {
-                respData = null;
+            // accept multiple backend shapes
+            const userId =
+            respData?.userId ||
+            respData?._id ||
+            respData?.id ||
+            respData?.user?._id ||
+            respData?.user?.id;
+
+            console.log("signup response:", respData);
+            console.log("resolved userId:", userId);
+
+            if (!userId) {
+            alert("Signup succeeded but no user id was returned. Check server response shape.");
+            return;
             }
-
-            if (!res.ok) {
-                alert(respData?.message || raw || "Signup failed");
-                return;
-            }
-
             // Your backend currently returns { ok, userId }
-            const userId = respData?.userId;
-            if (userId) {
-                localStorage.setItem(LS.mongoUserId, userId);
-                localStorage.setItem(LS.tutorId, userId);
-            }
-
+            // const userId = respData?.userId;
+           
+            localStorage.setItem(LS.mongoUserId, userId);
+            localStorage.setItem(LS.tutorId, userId);
             // store accountType from form selection
             localStorage.setItem(LS.accountType, accountType);
 
@@ -473,8 +495,29 @@ export default function SignUpMenu() {
                         </div>
 
                         <div className="input-group input-small">
-                            <label>Age</label>
-                            <input type="number" value={age} onChange={(e) => setAge(e.target.value)} />
+                        <label>Age</label>
+                        <input
+                            type="number"
+                            min="0"
+                            max="119"
+                            value={age}
+                            onChange={(e) => {
+                            const value = e.target.value;
+
+                            // Allow empty field
+                            if (value === "") {
+                                setAge("");
+                                return;
+                            }
+
+                            const numeric = Number(value);
+
+                            // Only allow 0–119
+                            if (numeric >= 0 && numeric < 120) {
+                                setAge(value);
+                            }
+                            }}
+                        />
                         </div>
 
                         <div className="input-group input-medium">
@@ -571,15 +614,37 @@ export default function SignUpMenu() {
                             <div className="input-group">
                                 <label>Grade</label>
                                 <input
-                                    value={grade}
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    onChange={(e) => setGrade(sanitizeDigits(e.target.value))}
-                                    onPaste={(e) => {
-                                        e.preventDefault();
-                                        setGrade(sanitizeDigits(e.clipboardData.getData("text")));
-                                    }}
-                                />
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        value={grade}
+                                        inputMode="numeric"
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+
+                                            // Allow empty field
+                                            if (value === "") {
+                                            setGrade("");
+                                            return;
+                                            }
+
+                                            const numeric = Number(value);
+
+                                            // Only allow grades 1–12
+                                            if (numeric >= 1 && numeric <= 12) {
+                                            setGrade(String(numeric));
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pasted = sanitizeDigits(e.clipboardData.getData("text"));
+                                            const numeric = Number(pasted);
+
+                                            if (numeric >= 1 && numeric <= 12) {
+                                            setGrade(String(numeric));
+                                            }
+                                        }}
+                                        />
                             </div>
                         </div>
 
@@ -679,12 +744,14 @@ export default function SignUpMenu() {
                         <input
                             value={phone}
                             inputMode="tel"
+                            placeholder="(555) 123-4567"
+                            maxLength={14} // formatted length: "(123) 456-7890" = 14 chars
                             onChange={(e) => setPhone(sanitizePhone(e.target.value))}
                             onPaste={(e) => {
                                 e.preventDefault();
                                 setPhone(sanitizePhone(e.clipboardData.getData("text")));
                             }}
-                        />
+                            />
                     </div>
 
                     <div className="input-group">

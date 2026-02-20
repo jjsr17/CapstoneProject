@@ -125,7 +125,56 @@ const ME_QUERY = `
     }
   }
 `;
+/** --------- Input helpers (match web rules) --------- **/
 
+function sanitizeLettersSpaces(value) {
+  // letters + spaces + common name punctuation (', -, .)
+  return String(value || "").replace(/[^a-zA-Z\s'.-]/g, "");
+}
+
+function sanitizeDigits(value) {
+  return String(value || "").replace(/[^\d]/g, "");
+}
+
+function isValidEmailDomain(value) {
+  const v = String(value || "").trim();
+  if (!v) return false;
+  // must have @ and end with ".something" (at least 2 letters)
+  // allows multi-part TLDs like .co.uk
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})?$/.test(v);
+}
+
+// 10 numeric digits + auto-format as (###) ###-####
+function phoneDigitsOnly(value) {
+  return String(value || "").replace(/\D/g, "").slice(0, 10);
+}
+
+function formatUsPhoneFromDigits(digits) {
+  const d = phoneDigitsOnly(digits);
+  const a = d.slice(0, 3);
+  const b = d.slice(3, 6);
+  const c = d.slice(6, 10);
+
+  if (d.length === 0) return "";
+  if (d.length < 4) return `(${a}`;
+  if (d.length < 7) return `(${a}) ${b}`;
+  return `(${a}) ${b}-${c}`;
+}
+function formatBirthDate(value) {
+  // keep digits only
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+
+  const mm = digits.slice(0, 2);
+  const dd = digits.slice(2, 4);
+  const yyyy = digits.slice(4, 8);
+
+  if (digits.length <= 2) return mm;
+  if (digits.length <= 4) return `${mm}/${dd}`;
+  return `${mm}/${dd}/${yyyy}`;
+}
+function sanitizePhoneAutoFormat(value) {
+  return formatUsPhoneFromDigits(value);
+}
 function Pill({ label, active, onPress }) {
   return (
     <Pressable
@@ -231,7 +280,7 @@ export default function SignupScreen() {
       stateField: stateField.trim() || undefined,
       country: country.trim() || undefined,
 
-      phone: phone.trim() || undefined,
+     phone: phoneDigitsOnly(phone) || undefined,
 
       user_email: email.trim().toLowerCase(),
       accountType,
@@ -294,34 +343,74 @@ export default function SignupScreen() {
   ]);
 
   const validate = useCallback(() => {
-    const edu = educationLevel.trim().toLowerCase();
+  const edu = educationLevel.trim().toLowerCase();
 
-    if (!payload.firstName) return "First Name is required.";
-    if (!payload.lastName) return "Last Name is required.";
-    if (!payload.user_email) return "Email is required.";
-    if (!["student", "educator"].includes(accountType)) return "Invalid account type.";
+  if (!payload.firstName) return "First Name is required.";
+  if (!payload.lastName) return "Last Name is required.";
+  if (!payload.user_email) return "Email is required.";
+  if (!isValidEmailDomain(payload.user_email)) {
+    return "Please enter a valid email (example: name@gmail.com).";
+  }
 
-    if (isLocalMode) {
-      if (!password) return "Password is required.";
-      if (password !== confirmPassword) return "Passwords do not match.";
+  if (!["student", "educator"].includes(accountType)) return "Invalid account type.";
+
+  if (isLocalMode) {
+    if (!password) return "Password is required.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+  }
+
+  if (!["", "Male", "Female", "Other"].includes(gender.trim())) {
+    return 'Gender must be "Male", "Female", "Other", or blank.';
+  }
+
+  if (accountType === "student" && !["", "school", "college"].includes(edu)) {
+    return 'Education Level must be "school", "college", or blank.';
+  }
+
+  // Age: 0–119
+  if (String(age).trim() !== "") {
+    const n = Number(age);
+    if (!Number.isFinite(n) || n < 0 || n >= 120) return "Age must be between 0 and 119.";
+  }
+
+  // Phone: if provided, must be 10 digits
+  const pd = phoneDigitsOnly(phone);
+  if (String(phone).trim() !== "" && pd.length !== 10) {
+    return "Phone number must be exactly 10 digits.";
+  }
+
+  // Grade: if student + school and provided, must be 1–12
+  if (accountType === "student" && edu === "school" && String(grade).trim() !== "") {
+    const n = Number(grade);
+    if (!Number.isFinite(n) || n < 1 || n > 12) return "Grade must be between 1 and 12.";
+  }
+  if (birthDate.trim() !== "") {
+    const dateRegex = /^(0[1-9]|1[0-2])\/(0[1-9]|[12]\d|3[01])\/\d{4}$/;
+    if (!dateRegex.test(birthDate)) {
+      return "Birth Date must be in MM/DD/YYYY format.";
     }
-
-    if (!["", "Male", "Female", "Other"].includes(gender.trim())) {
-      return 'Gender must be "Male", "Female", "Other", or blank.';
+    
+  }
+  // College Year: if student + college and provided, must be 1–4
+  if (accountType === "student" && edu === "college" && collegeYear.trim() !== "") {
+    const n = Number(collegeYear);
+    if (!Number.isFinite(n) || n < 1 || n > 4) {
+      return "College Year must be between 1 and 4.";
     }
-
-    if ( accountType === "student" && !["", "school", "college"].includes(edu)) {
-      return 'Education Level must be "school", "college", or blank.';
-    }
-
-
-    if (String(age).trim() !== "") {
-      const n = Number(age);
-      if (!Number.isFinite(n) || n < 0) return "Age must be a valid number (0+).";
-    }
-
-    return null;
-  }, [payload, accountType, isLocalMode, password, confirmPassword, gender, age, educationLevel]);
+  }
+  return null;
+}, [
+  payload,
+  accountType,
+  isLocalMode,
+  password,
+  confirmPassword,
+  gender,
+  age,
+  educationLevel,
+  grade,
+  phone,
+]);
 
   /** --------- Submit (match web logic) --------- **/
   useEffect(() => {
@@ -454,10 +543,29 @@ router.replace("/auth/login");
       </View>
 
       <Text style={styles.section}>Identity</Text>
-      <FormInput style={styles.input} placeholder="First Name *" value={firstName} onChangeText={setFirstName} editable={!loading} />
-      <FormInput style={styles.input} placeholder="Middle Name" value={middleName} onChangeText={setMiddleName} editable={!loading} />
-      <FormInput style={styles.input} placeholder="Last Name *" value={lastName} onChangeText={setLastName} editable={!loading} />
+        <FormInput
+        style={styles.input}
+        placeholder="First Name *"
+        value={firstName}
+        onChangeText={(v) => setFirstName(sanitizeLettersSpaces(v))}
+        editable={!loading}
+      />
 
+      <FormInput
+        style={styles.input}
+        placeholder="Middle Name"
+        value={middleName}
+        onChangeText={(v) => setMiddleName(sanitizeLettersSpaces(v))}
+        editable={!loading}
+      />
+
+      <FormInput
+        style={styles.input}
+        placeholder="Last Name *"
+        value={lastName}
+        onChangeText={(v) => setLastName(sanitizeLettersSpaces(v))}
+        editable={!loading}
+      />
       <Text style={styles.section}>Demographics (optional)</Text>
       <FormInput
         style={styles.input}
@@ -466,33 +574,70 @@ router.replace("/auth/login");
         onChangeText={setGender}
         editable={!loading}
       />
-      <FormInput style={styles.input} placeholder="Age" value={age} onChangeText={(v) => {
-           const digitsOnly = v.replace(/[^0-9]/g, "");
+      <FormInput
+          style={styles.input}
+          placeholder="Age (0-119)"
+          value={age}
+          onChangeText={(v) => {
+            const digitsOnly = sanitizeDigits(v);
             if (digitsOnly === "") {
-            setAge("");
-            return;
+              setAge("");
+              return;
             }
             const num = Number(digitsOnly);
-              if (num <= 120) {
+            if (Number.isFinite(num) && num >= 0 && num < 120) {
               setAge(String(num));
             }
-  }}
-            keyboardType="numeric"
-            maxLength={3}
-            editable={!loading}
-/>
+          }}
+          keyboardType="numeric"
+          maxLength={3}
+          editable={!loading}
+        />
 
-      <FormInput style={styles.input} placeholder="Birth Date (MM/DD/YYYY)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
-
+     <FormInput
+        style={styles.input}
+        placeholder="Birth Date (MM/DD/YYYY)"
+        value={birthDate}
+        onChangeText={(v) => setBirthDate(formatBirthDate(v))}
+        keyboardType="numeric"
+        maxLength={10} // 10 characters including slashes
+        editable={!loading}
+      />
       <Text style={styles.section}>Address (optional)</Text>
       <FormInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} editable={!loading} />
-      <FormInput style={styles.input} placeholder="Town" value={town} onChangeText={setTown} editable={!loading} />
-      <FormInput style={styles.input} placeholder="State" value={stateField} onChangeText={setStateField} editable={!loading} />
-      <FormInput style={styles.input} placeholder="Country" value={country} onChangeText={setCountry} editable={!loading} />
+     <FormInput
+            style={styles.input}
+            placeholder="Town"
+            value={town}
+            onChangeText={(v) => setTown(sanitizeLettersSpaces(v))}
+            editable={!loading}
+          />
 
+          <FormInput
+            style={styles.input}
+            placeholder="State"
+            value={stateField}
+            onChangeText={(v) => setStateField(sanitizeLettersSpaces(v))}
+            editable={!loading}
+          />
+
+          <FormInput
+            style={styles.input}
+            placeholder="Country"
+            value={country}
+            onChangeText={(v) => setCountry(sanitizeLettersSpaces(v))}
+            editable={!loading}
+          />
       <Text style={styles.section}>Contact</Text>
-      <FormInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" editable={!loading} />
-
+      <FormInput
+          style={styles.input}
+          placeholder="Phone (10 digits)"
+          value={phone}
+          onChangeText={(v) => setPhone(sanitizePhoneAutoFormat(v))}
+          keyboardType="phone-pad"
+          maxLength={14} // "(123) 456-7890"
+          editable={!loading}
+        />
       <Text style={styles.section}>Email</Text>
       <FormInput
         style={[styles.input, !isLocalMode && styles.inputReadOnly]}
@@ -545,18 +690,70 @@ router.replace("/auth/login");
             />
 
         </View>
-
-          <FormInput style={styles.input} placeholder="Grade" value={grade} onChangeText={setGrade} editable={!loading} />
-          <FormInput style={styles.input} placeholder="College Year" value={collegeYear} onChangeText={setCollegeYear} editable={!loading} />
-          <FormInput style={styles.input} placeholder="Concentration" value={studentConcentration} onChangeText={setStudentConcentration} editable={!loading} />
-
-          <TextInput
+{educationLevel === "school" && (
+        <FormInput
+          style={styles.input}
+          placeholder="Grade (1-12)"
+          value={grade}
+          onChangeText={(v) => {
+            const digits = sanitizeDigits(v);
+            if (digits === "") {
+              setGrade("");
+              return;
+            }
+            const n = Number(digits);
+            if (Number.isFinite(n) && n >= 1 && n <= 12) {
+              setGrade(String(n));
+            }
+          }}
+          keyboardType="numeric"
+          maxLength={2}
+          editable={!loading}
+        />  
+        )}
+        {educationLevel === "college" && (
+          <>
+          <FormInput
             style={styles.input}
-            placeholder="Degree Type (Associate/Bachelor/Master)"
-            value={degreeType}
-            onChangeText={setDegreeType}
+            placeholder="College Year (1-4)"
+            value={collegeYear}
+            onChangeText={(v) => {
+              const digits = sanitizeDigits(v);
+
+              if (digits === "") {
+                setCollegeYear("");
+                return;
+              }
+
+              const n = Number(digits);
+
+              // Only allow 1–4
+              if (n >= 1 && n <= 4) {
+                setCollegeYear(String(n));
+              }
+            }}
+            keyboardType="numeric"
+            maxLength={1}
             editable={!loading}
           />
+
+            <FormInput
+              style={styles.input}
+              placeholder="Concentration"
+              value={studentConcentration}
+              onChangeText={(v) => setStudentConcentration(sanitizeLettersSpaces(v))}
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Degree Type (Associate/Bachelor/Master)"
+              value={degreeType}
+              onChangeText={setDegreeType}
+              editable={!loading}
+            />
+          </>
+        )}
         </>
       ) : (
         <>

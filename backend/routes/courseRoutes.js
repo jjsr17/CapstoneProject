@@ -1,56 +1,70 @@
+// routes/courseRoutes.js
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const Booking = require("../models/Booking");
 
 console.log("✅ courseRoutes loaded from:", __filename);
-// Simple Course schema (inline or move to models later)
 
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-function to24Hour(hourStr, ampm) {
-  let h = Number(hourStr);
-  const A = (ampm || "").toUpperCase();
+/**
+ * Parse "HH:MM" (24-hour) into minutes since midnight.
+ * Returns null if invalid.
+ */
+function parseHHMMToMinutes(hhmm) {
+  const m = String(hhmm || "")
+    .trim()
+    .match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!m) return null;
 
-  if (A === "AM") {
-    if (h === 12) h = 0;
-  } else if (A === "PM") {
-    if (h !== 12) h += 12;
-  }
-  return h;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 0 || h > 23) return null;
+
+  return h * 60 + min;
 }
 
+/**
+ * Generate ISO slots from course.availability template for the next N days.
+ * Expects DB fields (24-hour):
+ *  - startTime: "12:00"
+ *  - endTime:   "18:00"
+ * AM/PM fields may exist but are ignored since times are already 24-hour.
+ */
 function generateSlotsFromTemplate(course, daysAhead, slotMinutes) {
-  const template = Array.isArray(course.availability) ? course.availability : [];
-  if (template.length === 0) return [];
+  const template = Array.isArray(course?.availability) ? course.availability : [];
+  if (!template.length) return [];
 
   const now = new Date();
   const results = [];
 
   for (let d = 0; d <= daysAhead; d++) {
     const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
     date.setDate(now.getDate() + d);
 
     const dow = dayNames[date.getDay()];
 
     for (const block of template) {
-      const days = Array.isArray(block.days) ? block.days : [];
+      const days = Array.isArray(block?.days) ? block.days : [];
       if (!days.includes(dow)) continue;
 
-      const startHour = to24Hour(block.start, block.startAMPM);
-      const endHour = to24Hour(block.end, block.endAMPM);
+      const startMin = parseHHMMToMinutes(block.startTime);
+      const endMin = parseHHMMToMinutes(block.endTime);
+      if (startMin == null || endMin == null) continue;
 
-      // build start/end for that date
       const blockStart = new Date(date);
-      blockStart.setHours(startHour, 0, 0, 0);
+      blockStart.setHours(0, 0, 0, 0);
+      blockStart.setMinutes(startMin);
 
       const blockEnd = new Date(date);
-      blockEnd.setHours(endHour, 0, 0, 0);
+      blockEnd.setHours(0, 0, 0, 0);
+      blockEnd.setMinutes(endMin);
 
-      // If end is earlier than start, assume it crosses midnight (optional)
-      if (blockEnd <= blockStart) blockEnd.setDate(blockEnd.getDate() + 1);
+      // Do not allow overnight blocks in this version
+      if (blockEnd <= blockStart) continue;
 
-      // Split into slotMinutes chunks
       let cursor = new Date(blockStart);
       while (cursor.getTime() + slotMinutes * 60000 <= blockEnd.getTime()) {
         const slotStart = new Date(cursor);
@@ -61,7 +75,6 @@ function generateSlotsFromTemplate(course, daysAhead, slotMinutes) {
           end: slotEnd.toISOString(),
           mode: block.mode || "Online",
           location: block.location || "",
-          days: block.days || [],
         });
 
         cursor = slotEnd;
@@ -69,11 +82,13 @@ function generateSlotsFromTemplate(course, daysAhead, slotMinutes) {
     }
   }
 
-  // sort by time
-  results.sort((a, b) => new Date(a.start) - new Date(b.start));
+  results.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
   return results;
 }
 
+// ---------------------
+// Course Model (inline)
+// ---------------------
 const CourseSchema = new mongoose.Schema(
   {
     educatorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -82,13 +97,17 @@ const CourseSchema = new mongoose.Schema(
     courseName: String,
     courseCode: String,
     description: String,
-    availability: Array,
+    availability: Array, // stores objects with startTime/endTime (24-hour), etc.
     createdAt: Date,
   },
   { timestamps: true }
 );
 
 const Course = mongoose.models.Course || mongoose.model("Course", CourseSchema);
+
+// ---------------------
+// Routes
+// ---------------------
 
 // POST /api/courses
 router.post("/", async (req, res) => {
@@ -100,73 +119,36 @@ router.post("/", async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
-router.get("/:id/available-slots", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const daysAhead = Number(req.query.daysAhead || 14);
-    const slotMinutes = 60;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid course id" });
-    }
-
-    const course = await Course.findById(id).lean();
-    if (!course) return res.status(404).json({ message: "Course not found" });
-
-    const allSlots = generateSlotsFromTemplate(course.availability || [], daysAhead, slotMinutes);
-
-    // If no template, return empty list
-    if (allSlots.length === 0) {
-      return res.json({ courseId: String(course._id), slotMinutes, availableSlots: [] });
-    }
-
-    // Query bookings for the tutor across the generated time window
-    const rangeStart = new Date(allSlots[0].start);
-    const rangeEnd = new Date(allSlots[allSlots.length - 1].end);
-
-    const bookings = await Booking.find({
-      tutorId: course.educatorId, // your Course schema uses educatorId
-      start: { $lt: rangeEnd },
-      end: { $gt: rangeStart },
-    }).lean();
-
-    // Filter out overlaps: slotStart < bookingEnd && slotEnd > bookingStart
-    const availableSlots = allSlots.filter((s) => {
-      const sStart = new Date(s.start).getTime();
-      const sEnd = new Date(s.end).getTime();
-      return !bookings.some((b) => {
-        const bStart = new Date(b.start).getTime();
-        const bEnd = new Date(b.end).getTime();
-        return sStart < bEnd && sEnd > bStart;
-      });
-    });
-
-    return res.json({
-      courseId: String(course._id),
-      tutorId: String(course.educatorId),
-      slotMinutes,
-      availableSlots,
-    });
-  } catch (err) {
-    console.error("available-slots error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-});
-
-// DELETE /api/courses/:id
-router.delete("/:id", async (req, res) => {
-  try {
-    const deleted = await Course.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Course not found" });
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(400).json({ message: "Invalid id", error: err.message });
-  }
-});
 
 // GET /api/courses
-// GET /api/courses/:id  ✅ Needed by Booking page
+router.get("/", async (req, res) => {
+  try {
+    const { educatorId, subject, query, type } = req.query;
+    const filter = {};
+
+    if (educatorId && educatorId !== "all") {
+      if (!mongoose.Types.ObjectId.isValid(educatorId)) {
+        return res.status(400).json({ message: "Invalid educatorId" });
+      }
+      filter.educatorId = educatorId;
+    }
+
+    if (subject) filter.subject = subject;
+    if (type) filter.type = type;
+
+    if (query) {
+      filter.courseName = { $regex: query, $options: "i" };
+    }
+
+    const courses = await Course.find(filter).sort({ createdAt: -1 }).lean();
+    res.json(courses);
+  } catch (err) {
+    console.error("GET /api/courses failed:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/courses/:id  (used by Booking page)
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -184,6 +166,8 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// GET /api/courses/:id/available-slots?daysAhead=14&slotMinutes=60
 router.get("/:id/available-slots", async (req, res) => {
   try {
     const { id } = req.params;
@@ -197,15 +181,24 @@ router.get("/:id/available-slots", async (req, res) => {
     const course = await Course.findById(id).lean();
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    // 1) generate candidate slots from course.availability (template)
+    // 1) generate candidate slots from course.availability
     const slots = generateSlotsFromTemplate(course, daysAhead, slotMinutes);
 
+    if (!slots.length) {
+      return res.json({
+        courseId: String(course._id),
+        tutorId: String(course.educatorId),
+        slotMinutes,
+        availableSlots: [],
+      });
+    }
+
     // 2) fetch existing bookings that overlap this date range
-    const rangeStart = slots.length ? new Date(slots[0].start) : new Date();
-    const rangeEnd = slots.length ? new Date(slots[slots.length - 1].end) : new Date();
+    const rangeStart = new Date(slots[0].start);
+    const rangeEnd = new Date(slots[slots.length - 1].end);
 
     const bookings = await Booking.find({
-      tutorId: course.educatorId,               // tutor is educatorId
+      tutorId: course.educatorId,
       start: { $lt: rangeEnd },
       end: { $gt: rangeStart },
       iscompleted: false,
@@ -213,8 +206,9 @@ router.get("/:id/available-slots", async (req, res) => {
 
     // 3) filter out slots that overlap existing bookings
     const available = slots.filter((s) => {
-      const sStart = new Date(s.start).getTime();
-      const sEnd = new Date(s.end).getTime();
+      const sStart = Date.parse(s.start);
+      const sEnd = Date.parse(s.end);
+
       return !bookings.some((b) => {
         const bStart = new Date(b.start).getTime();
         const bEnd = new Date(b.end).getTime();
@@ -234,104 +228,15 @@ router.get("/:id/available-slots", async (req, res) => {
   }
 });
 
-// GET /api/courses
-router.get("/", async (req, res) => {
+// DELETE /api/courses/:id
+router.delete("/:id", async (req, res) => {
   try {
-    const { educatorId, subject, query, type } = req.query;
-    let filter = {};
-
-    // educator filter
-    if (educatorId && educatorId !== "all") {
-      if (!mongoose.Types.ObjectId.isValid(educatorId)) {
-        return res.status(400).json({ message: "Invalid educatorId" });
-      }
-      filter.educatorId = educatorId;
-    }
-
-    // subject filter (from buttons)
-    if (subject) {
-      filter.subject = subject;
-    }
-
-    // tutoring / discussion filter
-    if (type) {
-      filter.type = type;
-    }
-
-    // text search (course name)
-    if (query) {
-      filter.courseName = { $regex: query, $options: "i" };
-    }
-
-    const courses = await Course.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.json(courses);
+    const deleted = await Course.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Course not found" });
+    res.json({ ok: true });
   } catch (err) {
-    console.error("GET /api/courses failed:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(400).json({ message: "Invalid id", error: err.message });
   }
 });
-function to24Hour(hourStr, ampm) {
-  let h = Number(hourStr);
-  const A = (ampm || "").toUpperCase();
-
-  if (A === "AM") {
-    if (h === 12) h = 0;
-  } else if (A === "PM") {
-    if (h !== 12) h += 12;
-  }
-  return h;
-}
-
-function generateSlotsFromTemplate(template, daysAhead, slotMinutes) {
-  const results = [];
-  const now = new Date();
-
-  for (let d = 0; d <= daysAhead; d++) {
-    const date = new Date(now);
-    date.setDate(now.getDate() + d);
-
-    const dow = dayNames[date.getDay()];
-
-    for (const block of template) {
-      const days = Array.isArray(block.days) ? block.days : [];
-      if (!days.includes(dow)) continue;
-
-      // Your DB fields: start, startAMPM, end, endAMPM (as strings like "12", "AM")
-      const startHour = to24Hour(block.start, block.startAMPM);
-      const endHour = to24Hour(block.end, block.endAMPM);
-
-      const blockStart = new Date(date);
-      blockStart.setHours(startHour, 0, 0, 0);
-
-      const blockEnd = new Date(date);
-      blockEnd.setHours(endHour, 0, 0, 0);
-
-      // If end is <= start, assume it crosses midnight
-      if (blockEnd <= blockStart) blockEnd.setDate(blockEnd.getDate() + 1);
-
-      // Split into 60-minute chunks
-      let cursor = new Date(blockStart);
-      while (cursor.getTime() + slotMinutes * 60000 <= blockEnd.getTime()) {
-        const slotStart = new Date(cursor);
-        const slotEnd = new Date(cursor.getTime() + slotMinutes * 60000);
-
-        results.push({
-          start: slotStart.toISOString(),
-          end: slotEnd.toISOString(),
-          mode: block.mode || "Online",
-          location: block.location || "",
-        });
-
-        cursor = slotEnd;
-      }
-    }
-  }
-
-  results.sort((a, b) => new Date(a.start) - new Date(b.start));
-  return results;
-}
 
 module.exports = router;

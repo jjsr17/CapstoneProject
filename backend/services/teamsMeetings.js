@@ -52,18 +52,18 @@ async function createTeamsMeetingEvent({
   if (!timeZone) throw new Error("Missing timeZone");
 
   const token = await getAppToken();
-  const url = `${GRAPH_ROOT}/users/${encodeURIComponent(organizer)}/events`;
+  const url = `${GRAPH_ROOT}/users/${encodeURIComponent(organizer)}/events?sendUpdates=all`;
 
   const eventPayload = {
-    subject,
-    body: {
-      contentType: "HTML",
-      content: bodyHtml,
-    },
-    start: { dateTime: startLocal, timeZone },
-    end: { dateTime: endLocal, timeZone },
-    isOnlineMeeting: true,
-  };
+  subject,
+  body: { contentType: "HTML", content: bodyHtml },
+  start: { dateTime: startLocal, timeZone },
+  end: { dateTime: endLocal, timeZone },
+
+  isOnlineMeeting: true,
+  onlineMeetingProvider: "teamsForBusiness",
+  responseRequested: true,
+};
 
   if (Array.isArray(attendees) && attendees.length > 0) {
     eventPayload.attendees = attendees.map((email) => ({
@@ -109,7 +109,7 @@ async function createTeamsMeeting({ subject, startISO, endISO }) {
   if (!organizerUserId) throw new Error("Missing TEAMS_ORGANIZER_USER_ID in .env");
 
   const url = `${GRAPH_ROOT}/users/${organizerUserId}/onlineMeetings`;
-
+  
   const res = await fetchImpl(url, {
     method: "POST",
     headers: {

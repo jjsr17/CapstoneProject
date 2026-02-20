@@ -3,7 +3,21 @@ import { router } from "expo-router";
 import React, { useEffect, useState} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import { logoutMicrosoftAndClear } from "./auth/logout";
 
+
+async function clearSession() {
+  const keys = ["mongoUserId", "accountType", "displayName"]; // add anything else you store
+  if (Platform.OS === "web") {
+    keys.forEach((k) => localStorage.removeItem(k));
+  } else {
+    await AsyncStorage.multiRemove(keys);
+  }
+}
+const handleLogout = async () => {
+  await clearSession();
+  router.replace("/auth/login");
+};
 export default function HomeScreen() {
   const [userName, setUserName] = useState("User");
 
@@ -43,12 +57,15 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>Chat</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, styles.logoutButton]}
-        onPress={() => router.replace("/auth/login")}
-      >
-        <Text style={styles.buttonText}>Logout</Text>
-      </TouchableOpacity>
+   <TouchableOpacity
+      style={[styles.button, styles.logoutButton]}
+      onPress={async () => {
+        await logoutMicrosoftAndClear();
+        router.replace("/auth/login"); // for native; web will redirect itself
+      }}
+    >
+      <Text style={styles.buttonText}>Logout</Text>
+    </TouchableOpacity>
     </View>
   );
 }

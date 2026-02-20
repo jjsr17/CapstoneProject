@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import "./mainmenu.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";
-const GRAPHQL_URL = "http://localhost:5000/graphql";
+const GRAPHQL_URL = API_BASE ? `${API_BASE}/graphql` : "/graphql";
+
 
 export default function MainMenu() {
     const navigate = useNavigate();
@@ -91,11 +92,13 @@ export default function MainMenu() {
           }
         `;
 
-                const res = await fetch(GRAPHQL_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ query, variables: { id: mongoUserId } }),
+               const res = await fetch(GRAPHQL_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ query, variables: { id: mongoUserId } }),
                 });
+
 
                 const json = await res.json();
                 const u = json?.data?.userById;

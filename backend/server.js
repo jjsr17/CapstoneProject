@@ -142,14 +142,15 @@ const typeDefs = gql`
   }
 
   type BookingEvent {
-    _id: ID!
-    title: String!
-    start: String!
-    end: String!
-    studentId: ID
-    tutorId: ID
-    iscompleted: Boolean
-  }
+  _id: ID!
+  title: String!
+  start: String!
+  end: String!
+  studentId: ID
+  tutorId: ID
+  iscompleted: Boolean
+  teamsJoinUrl: String
+}
 
   type Query {
     ping: String!
@@ -260,6 +261,7 @@ const resolvers = {
           studentId: b.studentId?.toString(),
           tutorId: b.tutorId?.toString(),
           iscompleted: !!b.iscompleted,
+          teamsJoinUrl: b.teamsJoinUrl || "",
         }));
     },
 

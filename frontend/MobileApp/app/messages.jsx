@@ -30,7 +30,7 @@ export default function MessagesScreen() {
   const flatListRef = useRef(null);
 
   // ✅ Backend base (LAN)
-  const API_BASE = useMemo(() => "http://192.168.4.28:5000", []);
+  const API_BASE = useMemo(() => "http://192.30.1.50:5000", []);
   
   const GRAPHQL_PATH = "/graphql";
 

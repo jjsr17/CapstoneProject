@@ -13,7 +13,24 @@ const emptyAvailability = () => ({
     mode: "Online",
     location: "",
 });
+function to24Hour(hhmm, ampm) {
+  const v = String(hhmm || "").trim();
+  const m = v.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!m) return v; // fallback; validation should already block this
 
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const ap = String(ampm || "").toUpperCase();
+
+  // 12-hour conversion
+  if (ap === "AM") {
+    if (h === 12) h = 0;
+  } else if (ap === "PM") {
+    if (h !== 12) h += 12;
+  }
+
+  return `${String(h).padStart(2, "0")}:${min}`;
+}
 function trimStr(v) {
     return typeof v === "string" ? v.trim() : "";
 }
@@ -190,14 +207,15 @@ export default function CourseOffering() {
             courseName: trimStr(courseName),
             courseCode: trimStr(courseCode),
             description: trimStr(description),
-            availability: availability.map((a) => ({
-                days: a.days,
-                start: trimStr(a.start),
-                startAMPM: a.startAMPM,
-                end: trimStr(a.end),
-                endAMPM: a.endAMPM,
-                mode: a.mode,
-                location: trimStr(a.location),
+      availability: availability.map((a) => ({
+            days: a.days,
+            startTime: to24Hour(trimStr(a.start), a.startAMPM),
+            endTime: to24Hour(trimStr(a.end), a.endAMPM),
+            // keep these if you still want them for display:
+            startAmPm: a.startAMPM,
+            endAmPm: a.endAMPM,
+            mode: a.mode,
+            location: trimStr(a.location),
             })),
             createdAt: new Date().toISOString(),
         };

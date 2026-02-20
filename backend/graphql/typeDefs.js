@@ -57,6 +57,7 @@ const typeDefs = gql`
     studentId: ID
     tutorId: ID
     iscompleted: Boolean
+    teamsJoinUrl: String
   }
 
   # -----------------------
