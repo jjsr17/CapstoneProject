@@ -6,7 +6,7 @@ import * as SecureStore from "expo-secure-store";
 
 // ✅ IMPORTANT: device cannot use localhost
 const API_WEB = "http://192.168.86.240:5000/graphql";
-const API_DEVICE = "http://192.168.86.22:5000/graphql"; // <-- your LAN IP
+const API_DEVICE = "http://192.168.4.30:5000/graphql"; // <-- your LAN IP
 const GRAPHQL_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 // If you later store tokens, inject them here.

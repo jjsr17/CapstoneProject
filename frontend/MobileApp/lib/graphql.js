@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 
 const API_WEB = "http://localhost:5000/graphql";
-const API_DEVICE = "http://192.168.86.240:5000/graphql"; // your LAN IP
+const API_DEVICE = "http://192.168.4.30:5000/graphql"; // your LAN IP
 export const GRAPHQL_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 export async function gqlFetch(query, variables) {

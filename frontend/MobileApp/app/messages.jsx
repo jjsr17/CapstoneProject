@@ -14,8 +14,9 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 
-export default function MessagesScreen({ navigation }) {
+export default function MessagesScreen() {
   const [contacts, setContacts] = useState([]);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -29,7 +30,7 @@ export default function MessagesScreen({ navigation }) {
   const flatListRef = useRef(null);
 
   // ✅ Backend base (LAN)
-  const API_BASE = useMemo(() => "http://192.168.86.22:5000", []);
+  const API_BASE = useMemo(() => "http://192.168.4.28:5000", []);
   
   const GRAPHQL_PATH = "/graphql";
 
@@ -85,9 +86,9 @@ async function gqlRequest(API_BASE, token, query, variables) {
 
 
   function goBack() {
-    if (navigation?.goBack) navigation.goBack();
-    else Alert.alert("Back", "No navigation found. Wire this screen into React Navigation.");
-  }
+  router.back();
+}
+
 
   function normalizeContacts(data) {
     const arr = Array.isArray(data) ? data : [];

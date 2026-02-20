@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Platform, ActivityIndicator, ScrollView } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { GRAPHQL_URL } from "../../lib/api";
 
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.240:5000";
+const API_DEVICE = "http://192.168.4.30:5000"; // <-- your desktop LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 export default function SubjectCourses() {

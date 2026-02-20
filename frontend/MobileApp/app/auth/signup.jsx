@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /** --------- API BASE --------- **/
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.22:5000"; // your LAN IP
+const API_DEVICE = "http://192.168.4.28:5000"; // your LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 /** --------- Paths --------- **/
@@ -138,6 +138,13 @@ function Pill({ label, active, onPress }) {
     </Pressable>
   );
 }
+
+const FormInput = ({style, ...props}) => {
+  return (
+      <TextInput style = {[styles.input, style]} placeholderTextColor="#888" {...props}
+      />
+  );
+};
 
 export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
@@ -403,15 +410,17 @@ export default function SignupScreen() {
     }
 
     // 3) Local mode (optional) store returned id if your backend sends it
-    const userId = data?.userId;
-    if (userId) {
-      await setItem(LS.mongoUserId, String(userId));
-      await setItem(LS.tutorId, String(userId));
-    }
-    await setItem(LS.accountType, String(accountType));
-    await setItem(LS.profileComplete, "true");
+   // Clear any existing session
+await removeItem(LS.mongoUserId);
+await removeItem(LS.tutorId);
+await removeItem(LS.accountType);
+await removeItem(LS.profileComplete);
+await removeItem(LS.msAccessToken);
+await removeItem(LS.useMsSso);
 
-    router.replace(accountType === "educator" ? "/educatoraccount" : "/home");
+// Go to login screen
+router.replace("/auth/login");
+
   } catch (e) {
     console.error("handleSignup error:", e);
     Alert.alert("Network/Crash", String(e?.message ?? e));
@@ -445,32 +454,47 @@ export default function SignupScreen() {
       </View>
 
       <Text style={styles.section}>Identity</Text>
-      <TextInput style={styles.input} placeholder="First Name *" value={firstName} onChangeText={setFirstName} editable={!loading} />
-      <TextInput style={styles.input} placeholder="Middle Name" value={middleName} onChangeText={setMiddleName} editable={!loading} />
-      <TextInput style={styles.input} placeholder="Last Name *" value={lastName} onChangeText={setLastName} editable={!loading} />
+      <FormInput style={styles.input} placeholder="First Name *" value={firstName} onChangeText={setFirstName} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Middle Name" value={middleName} onChangeText={setMiddleName} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Last Name *" value={lastName} onChangeText={setLastName} editable={!loading} />
 
       <Text style={styles.section}>Demographics (optional)</Text>
-      <TextInput
+      <FormInput
         style={styles.input}
         placeholder='Gender (Male / Female / Other)'
         value={gender}
         onChangeText={setGender}
         editable={!loading}
       />
-      <TextInput style={styles.input} placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" editable={!loading} />
-      <TextInput style={styles.input} placeholder="Birth Date (MM/DD/YYYY)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Age" value={age} onChangeText={(v) => {
+           const digitsOnly = v.replace(/[^0-9]/g, "");
+            if (digitsOnly === "") {
+            setAge("");
+            return;
+            }
+            const num = Number(digitsOnly);
+              if (num <= 120) {
+              setAge(String(num));
+            }
+  }}
+            keyboardType="numeric"
+            maxLength={3}
+            editable={!loading}
+/>
+
+      <FormInput style={styles.input} placeholder="Birth Date (MM/DD/YYYY)" value={birthDate} onChangeText={setBirthDate} editable={!loading} />
 
       <Text style={styles.section}>Address (optional)</Text>
-      <TextInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} editable={!loading} />
-      <TextInput style={styles.input} placeholder="Town" value={town} onChangeText={setTown} editable={!loading} />
-      <TextInput style={styles.input} placeholder="State" value={stateField} onChangeText={setStateField} editable={!loading} />
-      <TextInput style={styles.input} placeholder="Country" value={country} onChangeText={setCountry} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Address" value={address} onChangeText={setAddress} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Town" value={town} onChangeText={setTown} editable={!loading} />
+      <FormInput style={styles.input} placeholder="State" value={stateField} onChangeText={setStateField} editable={!loading} />
+      <FormInput style={styles.input} placeholder="Country" value={country} onChangeText={setCountry} editable={!loading} />
 
       <Text style={styles.section}>Contact</Text>
-      <TextInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" editable={!loading} />
+      <FormInput style={styles.input} placeholder="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" editable={!loading} />
 
       <Text style={styles.section}>Email</Text>
-      <TextInput
+      <FormInput
         style={[styles.input, !isLocalMode && styles.inputReadOnly]}
         placeholder="Email *"
         value={email}
@@ -484,7 +508,7 @@ export default function SignupScreen() {
       {isLocalMode && (
         <>
           <Text style={styles.section}>Password</Text>
-          <TextInput
+          <FormInput
             style={styles.input}
             placeholder="Password *"
             value={password}
@@ -492,7 +516,7 @@ export default function SignupScreen() {
             secureTextEntry
             editable={!loading}
           />
-          <TextInput
+          <FormInput
             style={styles.input}
             placeholder="Confirm Password *"
             value={confirmPassword}
@@ -506,7 +530,7 @@ export default function SignupScreen() {
       {accountType === "student" ? (
         <>
           <Text style={styles.section}>Student (optional)</Text>
-          <TextInput style={styles.input} placeholder="School Name" value={schoolName} onChangeText={setSchoolName} editable={!loading} />
+          <FormInput style={styles.input} placeholder="School Name" value={schoolName} onChangeText={setSchoolName} editable={!loading} />
          <View style={styles.pillRow}>
           <Pill
               label="School"
@@ -522,9 +546,9 @@ export default function SignupScreen() {
 
         </View>
 
-          <TextInput style={styles.input} placeholder="Grade" value={grade} onChangeText={setGrade} editable={!loading} />
-          <TextInput style={styles.input} placeholder="College Year" value={collegeYear} onChangeText={setCollegeYear} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Concentration" value={studentConcentration} onChangeText={setStudentConcentration} editable={!loading} />
+          <FormInput style={styles.input} placeholder="Grade" value={grade} onChangeText={setGrade} editable={!loading} />
+          <FormInput style={styles.input} placeholder="College Year" value={collegeYear} onChangeText={setCollegeYear} editable={!loading} />
+          <FormInput style={styles.input} placeholder="Concentration" value={studentConcentration} onChangeText={setStudentConcentration} editable={!loading} />
 
           <TextInput
             style={styles.input}
@@ -537,9 +561,9 @@ export default function SignupScreen() {
       ) : (
         <>
           <Text style={styles.section}>Educator (optional)</Text>
-          <TextInput style={styles.input} placeholder="College Name" value={educatorCollegeName} onChangeText={setEducatorCollegeName} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Degree (Bachelor/Master/Doctorate)" value={educatorDegree} onChangeText={setEducatorDegree} editable={!loading} />
-          <TextInput style={styles.input} placeholder="Concentration" value={educatorConcentration} onChangeText={setEducatorConcentration} editable={!loading} />
+          <FormInput style={styles.input} placeholder="College Name" value={educatorCollegeName} onChangeText={setEducatorCollegeName} editable={!loading} />
+          <FormInput style={styles.input} placeholder="Degree (Bachelor/Master/Doctorate)" value={educatorDegree} onChangeText={setEducatorDegree} editable={!loading} />
+          <FormInput style={styles.input} placeholder="Concentration" value={educatorConcentration} onChangeText={setEducatorConcentration} editable={!loading} />
           <TextInput
             style={styles.input}
             placeholder="Credentials file name (PDF)"
@@ -563,11 +587,9 @@ export default function SignupScreen() {
         // </Pressable>
          <Pressable
           style={styles.primaryBtn}
-          onPress={() => {
-            console.log("CREATE ACCOUNT pressed ✅");
-            Alert.alert("Pressed", "Create Account button is firing");
-            handleSignup();
-          }}
+          onPress={handleSignup}
+
+          
         >
           <Text style={styles.primaryBtnText}>CREATE ACCOUNT</Text>
         </Pressable>
@@ -591,14 +613,17 @@ const styles = StyleSheet.create({
 
   section: { marginTop: 14, fontSize: 16, fontWeight: "700" },
 
-  input: {
-    borderWidth: 1,
-    borderColor: "#bbb",
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 8,
-    backgroundColor: "#fff",
-  },
+input: {
+  borderWidth: 1,
+  borderColor: "#bbb",
+  borderRadius: 10,
+  padding: 12,
+  marginTop: 8,
+  backgroundColor: "#ffffff",
+  color: "#111", // typed text color
+  fontSize: 15,
+},
+
   inputReadOnly: {
     backgroundColor: "#f2f2f2",
   },
@@ -636,8 +661,6 @@ const styles = StyleSheet.create({
     ...(Platform.OS === "web" ? { cursor: "pointer" } : null),
   },
   secondaryBtnText: { color: "#fff", fontWeight: "800", letterSpacing: 0.5 },
-
   loadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 10 },
-
   debug: { marginTop: 12, textAlign: "center", color: "#666", fontSize: 12 },
 });

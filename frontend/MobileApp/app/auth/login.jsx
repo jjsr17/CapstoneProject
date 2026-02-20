@@ -13,7 +13,7 @@ const clientId = "b8a0b68a-5858-4d1c-a0c3-9d52db4696de";
 
 // ✅ Backend base (no /graphql here)
 const API_WEB = "http://localhost:5000";
-const API_DEVICE = "http://192.168.86.22:5000"; // ✅ match your working LAN IP
+const API_DEVICE = "http://192.168.4.28:5000"; // ✅ match your working LAN IP
 const API_URL = Platform.OS === "web" ? API_WEB : API_DEVICE;
 
 // ✅ Keep keys consistent with Messages + web app
@@ -69,6 +69,13 @@ async function saveMsTokens(accessToken) {
     await AsyncStorage.setItem(KS.msGraphAccessToken, accessToken);
   }
 }
+
+const FormInput = ({style, ...props}) => {
+  return (
+      <TextInput style = {[styles.input, style]} placeholderTextColor="#888" {...props}
+      />
+  );
+};
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -231,7 +238,7 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Noesis</Text>
 
-      <TextInput
+      <FormInput
         style={styles.input}
         placeholder="Username"
         value={username}
@@ -239,7 +246,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
       />
 
-      <TextInput
+      <FormInput
         style={styles.input}
         placeholder="Password"
         value={password}
@@ -277,6 +284,16 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", padding: 30, backgroundColor: "#f5f5f5" },
   title: { fontSize: 32, fontWeight: "bold", marginBottom: 40, textAlign: "center", color: "#333" },
-  input: { borderWidth: 1, borderColor: "#999", borderRadius: 8, padding: 12, marginBottom: 20 },
+  input: {
+  borderWidth: 1,
+  borderColor: "#bbb",
+  borderRadius: 10,
+  padding: 12,
+  marginTop: 8,
+  backgroundColor: "#ffffff",
+  color: "#111", // typed text color
+  fontSize: 15,
+},
+
   footerText: { marginTop: 20, textAlign: "center", color: "#666" },
 });

@@ -43,7 +43,7 @@ export default function BookingScreen() {
 
   const API_BASE = useMemo(() => {
     const API_WEB = "http://localhost:5000";
-    const API_DEVICE = "http://192.168.86.22:5000";
+    const API_DEVICE = "http://192.168.4.28:5000";
     return Platform.OS === "web" ? API_WEB : API_DEVICE;
   }, []);
 
