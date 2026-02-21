@@ -20,7 +20,10 @@ const BASE = {
     about: "educatorAbout",
 };
 
+
+
 export default function EducatorAccount() {
+    
     const menuRef = useRef(null);
 
     const [events, setEvents] = useState([]);
@@ -32,6 +35,31 @@ export default function EducatorAccount() {
     const mongoUserId = useMemo(() => localStorage.getItem("mongoUserId") || "", []);
     const k = useCallback((baseKey) => `user:${mongoUserId}:${baseKey}`, [mongoUserId]);
 
+    const [courses, setCourses] = useState([]);
+    const [coursesLoading, setCoursesLoading] = useState(false);
+
+    const loadCourses = useCallback(async () => {
+    const educatorId = localStorage.getItem("mongoUserId") || "";
+    if (!educatorId) {
+        setCourses([]);
+        return;
+    }
+
+    try {
+        setCoursesLoading(true);
+        const res = await fetch(
+        `${API_BASE || "http://localhost:5000"}/api/courses?educatorId=${encodeURIComponent(educatorId)}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch courses");
+        const data = await res.json();
+        setCourses(Array.isArray(data) ? data : []);
+    } catch (e) {
+        console.error(e);
+        setCourses([]);
+    } finally {
+        setCoursesLoading(false);
+    }
+    }, [mongoUserId]);
     // migrate old global keys -> user keys if needed
     useEffect(() => {
         if (!mongoUserId) return;
@@ -139,7 +167,9 @@ export default function EducatorAccount() {
         document.addEventListener("click", handleClickOutside);
         return () => document.removeEventListener("click", handleClickOutside);
     }, []);
-
+    useEffect(() => {
+  loadCourses();
+}, [loadCourses]);
     // ===== Load educator profile + tutor profile =====
     useEffect(() => {
         async function loadEducator() {
@@ -184,7 +214,7 @@ export default function EducatorAccount() {
 
         loadEducator();
     }, []);
-
+    
     // ✅ Calendar click -> model
     const handleEventClick = useCallback((clickInfo) => {
         const ev = clickInfo.event;
@@ -328,19 +358,26 @@ export default function EducatorAccount() {
         }
     }
 
-    async function deleteCourse(id) {
-        if (!window.confirm("Delete this offering?")) return;
-        try {
-            const res = await fetch(`http://localhost:5000/api/courses/${id}`, {
-                method: "DELETE",
-            });
-            if (!res.ok) throw new Error("Delete failed");
-            loadEducatorCourses();
-        } catch (err) {
-            console.error(err);
-            alert("Failed to delete course.");
-        }
-    }
+    const deleteCourse = useCallback(async (id) => {
+  if (!window.confirm("Delete this offering?")) return;
+
+  try {
+    const res = await fetch(
+      `${API_BASE || "http://localhost:5000"}/api/courses/${id}`,
+      { method: "DELETE" }
+    );
+    if (!res.ok) throw new Error("Delete failed");
+
+    // ✅ immediate UI update (no refetch needed)
+    setCourses((prev) => prev.filter((c) => c._id !== id));
+
+    // OR if you prefer refetch:
+    // await loadCourses();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to delete course.");
+  }
+}, []);
 
     function escapeHtml(str) {
         if (!str) return "";
@@ -396,8 +433,8 @@ export default function EducatorAccount() {
                         : undefined
                 }
             >
-                <div className="profile-pic">
-                    <img src={profileSrc || ""} alt="" />
+              <div className="profile-pic">
+                {profileSrc && <img src={profileSrc} alt="Profile" />}
                 </div>
             </div>
 
@@ -462,11 +499,25 @@ export default function EducatorAccount() {
                             </button>
                         </div>
 
-                        <div id="educatorCourseList">
-                            <p className="empty-text" id="noCoursesNotice">
-                                No courses added yet.
-                            </p>
-                        </div>
+                       <div>
+                            {coursesLoading ? (
+                                <p className="empty-text">Loading courses...</p>
+                            ) : courses.length === 0 ? (
+                                <p className="empty-text">No courses added yet.</p>
+                            ) : (
+                                courses.map((c) => (
+                                <div key={c._id} className="course-card">
+                                    <h4>
+                                    {c.courseName} {c.courseCode ? `(${c.courseCode})` : ""}
+                                    </h4>
+                                    <p><strong>Subject:</strong> {c.subject}</p>
+                                    <p><strong>Type:</strong> {c.type}</p>
+                                    <p>{c.description || ""}</p>
+                                    <button onClick={() => deleteCourse(c._id)}>Delete</button>
+                                </div>
+                                ))
+                            )}
+                            </div>
                     </div>
                 </div>
 

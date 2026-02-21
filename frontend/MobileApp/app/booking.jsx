@@ -83,7 +83,11 @@ export default function BookingScreen() {
 
     try {
       setLoading(true);
-
+      console.log("API_BASE:", API_BASE);
+      console.log("course url:", `${API_BASE}/api/courses/${courseId}`);
+      console.log("slots url:", `${API_BASE}/api/courses/${courseId}/available-slots?daysAhead=14`);
+      console.log("book url:", `${API_BASE}/api/bookings`);
+      
       const courseRes = await fetch(`${API_BASE}/api/courses/${courseId}`);
       if (!courseRes.ok) throw new Error("Failed to load course");
       const courseData = await courseRes.json();

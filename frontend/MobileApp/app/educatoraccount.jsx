@@ -51,7 +51,19 @@ const BOOKINGS_BY_TUTOR = `
     }
   }
 `;
+function confirmDelete(title, message) {
+  return new Promise((resolve) => {
+    if (Platform.OS === "web") {
+      resolve(window.confirm(`${title}\n\n${message}`));
+      return;
+    }
 
+    Alert.alert(title, message, [
+      { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+      { text: "Delete", style: "destructive", onPress: () => resolve(true) },
+    ]);
+  });
+}
 async function getStoredUserId() {
   if (Platform.OS === "web") return localStorage.getItem("mongoUserId");
   return AsyncStorage.getItem("mongoUserId");
@@ -214,27 +226,26 @@ export default function EducatorAccountScreen() {
   }, [loadCourses]);
 
   const deleteCourse = useCallback(
-    async (courseId) => {
-      Alert.alert("Delete course?", "Are you sure you want to delete this offering?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const resp = await fetch(`${API_BASE}/api/courses/${courseId}`, { method: "DELETE" });
-              const json = await safeJson(resp);
-              if (!resp.ok) throw new Error(json?.message || "Delete failed");
-              await loadCourses();
-            } catch (e) {
-              Alert.alert("Error", String(e?.message ?? e));
-            }
-          },
-        },
-      ]);
-    },
-    [loadCourses]
-  );
+  async (courseId) => {
+    const ok = await confirmDelete(
+      "Delete course?",
+      "Are you sure you want to delete this offering?"
+    );
+    if (!ok) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/courses/${courseId}`, {
+        method: "DELETE",
+      });
+      const json = await safeJson(resp);
+      if (!resp.ok) throw new Error(json?.message || "Delete failed");
+      await loadCourses();
+    } catch (e) {
+      Alert.alert("Error", String(e?.message ?? e));
+    }
+  },
+  [loadCourses]
+);
 
   // ---- computed UI strings
   const displayName = useMemo(() => {

@@ -22,6 +22,29 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AMPM = ["AM", "PM"];
 const MODES = ["Online", "IRL"];
 
+async function getMsAccessToken() {
+  if (Platform.OS === "web") return localStorage.getItem("msAccessToken");
+  return AsyncStorage.getItem("msAccessToken");
+}
+function to24HourMobile(value, ampm) {
+  const v = String(value ?? "").trim();
+
+  // accept "10" or "10:30"
+  const m = v.match(/^(\d{1,2})(?::([0-5]\d))?$/);
+  if (!m) return null;
+
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+
+  const ap = String(ampm || "").toUpperCase();
+  if (ap === "AM") {
+    if (h === 12) h = 0;
+  } else if (ap === "PM") {
+    if (h !== 12) h += 12;
+  }
+
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
 const emptyAvailability = () => ({
   days: [],
   start: "",
@@ -150,12 +173,16 @@ export default function CourseOfferingScreen() {
 
   // ===== Validation =====
   const validate = () => {
+    
     if (!type) return "Please select Course Tutoring or Course Discussion.";
     if (!trimStr(courseName)) return "Please enter a course name.";
     if (!finalSubject) return "Please select a subject.";
 
     for (let i = 0; i < availability.length; i++) {
       const a = availability[i];
+      const s = to24HourMobile(trimStr(a.start), a.startAMPM);
+      const e = to24HourMobile(trimStr(a.end), a.endAMPM);
+      if (!s || !e) return `Availability #${i + 1}: invalid time.`;
       if (!a.days?.length) return `Availability #${i + 1}: pick at least one day.`;
       if (!trimStr(a.start) || !trimStr(a.end))
         return `Availability #${i + 1}: start and end time are required.`;
@@ -192,14 +219,19 @@ export default function CourseOfferingScreen() {
       courseCode: trimStr(courseCode),
       description: trimStr(description),
       availability: availability.map((a) => ({
-        days: a.days,
-        start: trimStr(a.start),
-        startAMPM: a.startAMPM,
-        end: trimStr(a.end),
-        endAMPM: a.endAMPM,
-        mode: a.mode,
-        location: trimStr(a.location),
-      })),
+  days: a.days,
+
+  // ✅ send what Booking/backend expects
+  startTime: to24HourMobile(trimStr(a.start), a.startAMPM),
+  endTime: to24HourMobile(trimStr(a.end), a.endAMPM),
+
+  // optional: keep originals if you like
+  startAmPm: a.startAMPM,
+  endAmPm: a.endAMPM,
+
+  mode: a.mode, // "Online" or "IRL"
+  location: trimStr(a.location),
+})),
       educatorId,
       createdAt: new Date().toISOString(),
     };
@@ -209,11 +241,16 @@ export default function CourseOfferingScreen() {
     try {
       setSubmitting(true);
 
-      const res = await fetch(`${API_BASE}/api/courses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    const msToken = await getMsAccessToken();
+
+    const res = await fetch(`${API_BASE}/api/courses`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(msToken ? { Authorization: `Bearer ${msToken}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
 
       const data = await safeJson(res);
       console.log("🌐 create course response:", res.status, data);
