@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./booking.css";
-const studentId = localStorage.getItem("mongoUserId");
-const accountType = (localStorage.getItem("accountType") || "").trim().toLowerCase();
 
-console.log("studentId:", studentId);
-console.log("accountType:", accountType);
+
 
 const DAY_TO_JS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
@@ -167,6 +164,11 @@ export default function Booking() {
   }
 
   async function bookSession() {
+    const studentId = localStorage.getItem("mongoUserId");
+    const accountType = (localStorage.getItem("accountType") || "").trim().toLowerCase();
+    
+    console.log("studentId:", studentId);
+    console.log("accountType:", accountType);
     if (!selectedSlot || !course) return;
 
     // You MUST have a studentId to book (wire this from auth)
