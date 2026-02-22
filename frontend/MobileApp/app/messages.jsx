@@ -30,8 +30,12 @@ export default function MessagesScreen() {
   const flatListRef = useRef(null);
 
   // ✅ Backend base (LAN)
-  const API_BASE = useMemo(() => "http://192.30.1.50:5000", []);
-  
+   const API_BASE = useMemo(() => {
+      const API_WEB = "http://localhost:5000";
+      const API_DEVICE = "http://192.168.4.28:5000";
+      return Platform.OS === "web" ? API_WEB : API_DEVICE;
+    }, []);
+    
   const GRAPHQL_PATH = "/graphql";
 
 const ME_QUERY = `
@@ -304,6 +308,7 @@ async function gqlRequest(API_BASE, token, query, variables) {
       Alert.alert("Error", "Failed to send message.");
     }
   }
+ 
   useEffect(() => {
   (async () => {
     try {
@@ -330,7 +335,7 @@ async function gqlRequest(API_BASE, token, query, variables) {
     loadContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+  
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
