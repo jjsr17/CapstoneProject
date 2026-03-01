@@ -22,28 +22,96 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AMPM = ["AM", "PM"];
 const MODES = ["Online", "IRL"];
 
+
 async function getMsAccessToken() {
   if (Platform.OS === "web") return localStorage.getItem("msAccessToken");
   return AsyncStorage.getItem("msAccessToken");
 }
-function to24HourMobile(value, ampm) {
+function autoFormatTimeInput(value) {
+  const raw = String(value ?? "");
+
+  // If the user typed a colon, respect it and just sanitize parts
+  if (raw.includes(":")) {
+    const [hRaw, mRaw = ""] = raw.split(":");
+    const h = hRaw.replace(/\D/g, "").slice(0, 2);
+    const m = mRaw.replace(/\D/g, "").slice(0, 2);
+    return `${h}:${m}`;
+  }
+
+  // Digits-only typing: auto-insert colon when minutes begin
+  const digits = raw.replace(/\D/g, "").slice(0, 4); // max HHMM
+  if (!digits) return "";
+
+  if (digits.length <= 2) {
+    // still typing hour
+    return digits;
+  }
+
+  if (digits.length === 3) {
+    // HMM -> H:MM
+    return `${digits[0]}:${digits.slice(1)}`;
+  }
+
+  // HHMM -> HH:MM
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+function normalizeTimeOnBlur(value) {
   const v = String(value ?? "").trim();
 
-  // accept "10" or "10:30"
-  const m = v.match(/^(\d{1,2})(?::([0-5]\d))?$/);
+  // "9:3" -> "9:03"
+  let m = v.match(/^(\d{1,2}):(\d)$/);
+  if (m) return `${m[1]}:0${m[2]}`;
+
+  // "9:" -> keep as-is (validation will catch)
+  return v;
+}
+function to24HourMobile(hhmm, ampm) {
+  const v = String(hhmm ?? "").trim();
+
+  // Require H:MM or HH:MM, hour 1-12, minutes 00-59
+  const m = v.match(/^(\d{1,2}):([0-5]\d)$/);
   if (!m) return null;
 
   let h = parseInt(m[1], 10);
-  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const min = parseInt(m[2], 10);
+
+  if (h < 1 || h > 12) return null;
 
   const ap = String(ampm || "").toUpperCase();
   if (ap === "AM") {
     if (h === 12) h = 0;
   } else if (ap === "PM") {
     if (h !== 12) h += 12;
+  } else {
+    return null;
   }
 
   return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+// Allow only digits + ":" while typing/pasting
+function sanitizeTimeInput(value) {
+  let v = String(value || "").replace(/[^0-9:]/g, "");
+
+  // allow only ONE colon
+  const firstColon = v.indexOf(":");
+  if (firstColon !== -1) {
+    v = v.slice(0, firstColon + 1) + v.slice(firstColon + 1).replace(/:/g, "");
+  }
+
+  // limit length to "HH:MM" max 5 chars
+  if (v.length > 5) v = v.slice(0, 5);
+
+  return v;
+}
+
+// Final validation: 12-hour times with minutes (1-12):(00-59)
+function isValidHHMM12(value) {
+  const v = String(value || "").trim();
+  const m = v.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!m) return false;
+  const h = parseInt(m[1], 10);
+  return h >= 1 && h <= 12;
 }
 const emptyAvailability = () => ({
   days: [],
@@ -55,19 +123,6 @@ const emptyAvailability = () => ({
   location: "",
 });
 
-const sanitizeHour = (value) => {
-  // remove non-digits
-  const digits = value.replace(/[^0-9]/g, "");
-
-  if (!digits) return "";
-
-  const num = parseInt(digits, 10);
-
-  if (num < 1) return "1";
-  if (num > 12) return "12";
-
-  return String(num);
-};
 
 const trimStr = (v) => (typeof v === "string" ? v.trim() : "");
 
@@ -173,24 +228,32 @@ export default function CourseOfferingScreen() {
 
   // ===== Validation =====
   const validate = () => {
-    
-    if (!type) return "Please select Course Tutoring or Course Discussion.";
-    if (!trimStr(courseName)) return "Please enter a course name.";
-    if (!finalSubject) return "Please select a subject.";
+  if (!type) return "Please select Course Tutoring or Course Discussion.";
+  if (!trimStr(courseName)) return "Please enter a course name.";
+  if (!finalSubject) return "Please select a subject.";
 
-    for (let i = 0; i < availability.length; i++) {
-      const a = availability[i];
-      const s = to24HourMobile(trimStr(a.start), a.startAMPM);
-      const e = to24HourMobile(trimStr(a.end), a.endAMPM);
-      if (!s || !e) return `Availability #${i + 1}: invalid time.`;
-      if (!a.days?.length) return `Availability #${i + 1}: pick at least one day.`;
-      if (!trimStr(a.start) || !trimStr(a.end))
-        return `Availability #${i + 1}: start and end time are required.`;
-      if (a.mode === "IRL" && !trimStr(a.location))
-        return `Availability #${i + 1}: location is required for IRL.`;
+  for (let i = 0; i < availability.length; i++) {
+    const a = availability[i];
+
+    if (!a.days?.length) return `Availability #${i + 1}: pick at least one day.`;
+    if (!trimStr(a.start) || !trimStr(a.end))
+      return `Availability #${i + 1}: start and end time are required.`;
+
+    // ✅ enforce HH:MM with minutes (12-hour because you use AM/PM toggles)
+    if (!isValidHHMM12(a.start) || !isValidHHMM12(a.end)) {
+      return `Availability #${i + 1}: time must be in H:MM or HH:MM, e.g., 9:30 or 12:00.`;
     }
-    return null;
-  };
+
+    const s = to24HourMobile(trimStr(a.start), a.startAMPM);
+    const e = to24HourMobile(trimStr(a.end), a.endAMPM);
+    if (!s || !e) return `Availability #${i + 1}: invalid time.`;
+
+    if (a.mode === "IRL" && !trimStr(a.location))
+      return `Availability #${i + 1}: location is required for IRL.`;
+  }
+
+  return null;
+};
 
   // ===== Submit =====
   const createOffering = async () => {
@@ -421,13 +484,17 @@ export default function CourseOfferingScreen() {
               <View style={styles.row}>
                 <View style={styles.timeBox}>
                   <Text style={styles.timeLabel}>Start</Text>
-                  <TextInput
+                 <TextInput
                     style={styles.input}
                     value={a.start}
-                    onChangeText={(v) => updateAvailability(i, "start", sanitizeHour(v))}
-                    placeholder="12"
-                    keyboardType="numeric"
-                    maxLength={2}
+                    onChangeText={(v) => updateAvailability(i, "start", autoFormatTimeInput(v))}
+                    onBlur={() =>
+                      updateAvailability(i, "start", normalizeTimeOnBlur(a.start))
+                    }
+                    placeholder="9:00"
+                    autoCorrect={false}
+                    maxLength={5}
+                    keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
                   />
                   <View style={styles.row}>
                     {AMPM.map((ap) => (
@@ -453,14 +520,18 @@ export default function CourseOfferingScreen() {
                 <View style={{ width: 12 }} />
 
                 <View style={styles.timeBox}>
-                  <Text style={styles.timeLabel}>End</Text>
                   <TextInput
-                   style={styles.input}
-                   value={a.end}
-                   onChangeText={(v) => updateAvailability(i, "end", sanitizeHour(v))}
-                   placeholder="3"
-                   keyboardType="numeric"maxLength={2}
-                   />
+                    style={styles.input}
+                    value={a.end}
+                    onChangeText={(v) => updateAvailability(i, "end", autoFormatTimeInput(v))}
+                    onBlur={() =>
+                      updateAvailability(i, "end", normalizeTimeOnBlur(a.end))
+                    }
+                    placeholder="3:30"
+                    autoCorrect={false}
+                    maxLength={5}
+                    keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
+                  />z
 
                   <View style={styles.row}>
                     {AMPM.map((ap) => (
