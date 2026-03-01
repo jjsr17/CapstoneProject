@@ -531,7 +531,7 @@ export default function CourseOfferingScreen() {
                     autoCorrect={false}
                     maxLength={5}
                     keyboardType={Platform.OS === "ios" ? "numbers-and-punctuation" : "default"}
-                  />z
+                  />
 
                   <View style={styles.row}>
                     {AMPM.map((ap) => (
